@@ -58,9 +58,8 @@ endif
 
 dxvk_extradep = [ ]
 
-if dxvk_is_msvc
-  wrc = find_program('rc')
-else
+wrc = find_program('rc')
+if not wrc.found()
   add_global_link_arguments('-static', '-static-libgcc', language: 'c')
   add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
 
@@ -92,20 +91,19 @@ lib_d3d11   = dxvk_compiler.find_library('d3d11')
 lib_dxgi    = dxvk_compiler.find_library('dxgi')
 lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
 
-if dxvk_is_msvc
+lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47', required : false)
+if not lib_d3dcompiler_47.found()
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
-else
-  lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 endif
 
 exe_ext = ''
 dll_ext = ''
 
-if dxvk_is_msvc
+#if dxvk_is_msvc
   res_ext = '.res'
-else
-  res_ext = '.o'
-endif
+#else
+#  res_ext = '.o'
+#endif
 
 def_spec_ext = '.def'
 
@@ -118,15 +116,15 @@ glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],
   arguments : glsl_args)
 
-if dxvk_is_msvc
+#if dxvk_is_msvc
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
   arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ])
-else
-  wrc_generator = generator(wrc,
-  output    : [ '@BASENAME@' + res_ext ],
-  arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
-endif
+#else
+#  wrc_generator = generator(wrc,
+#  output    : [ '@BASENAME@' + res_ext ],
+#  arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
+#endif
 
 dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
