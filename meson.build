@@ -7,6 +7,14 @@ add_project_arguments('-DNOMINMAX', language : 'cpp')
 dxvk_compiler = meson.get_compiler('cpp')
 dxvk_is_msvc = dxvk_compiler.get_id() == 'msvc'
 
+dxvk_buildtype = get_option('buildtype')
+dxvk_debug     = dxvk_buildtype == 'debug' or dxvk_buildtype == 'debugoptimized'
+
+if dxvk_debug
+else
+  add_project_arguments('-DNDEBUG',   language : 'c')
+endif
+
 # c++17 was added in 15.3, older version needs c++latest
 if dxvk_is_msvc and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
