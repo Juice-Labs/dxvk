@@ -1,0 +1,13 @@
+[binaries]
+c = 'clang-cl'
+cpp = 'clang-cl'
+rc = 'rc'
+
+[properties]
+needs_exe_wrapper = true
+
+[host_machine]
+system = 'windows'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'
