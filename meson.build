@@ -1,4 +1,6 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.9.2', meson_version : '>= 0.46')
+project('dxvk', ['c', 'cpp'], version : 'v1.9.2', meson_version : '>= 0.46', default_options : [
+  'b_vscrt=mt',
+])
 
 cpu_family = target_machine.cpu_family()
 
@@ -48,7 +50,10 @@ if not dxvk_is_msvc
   endif
 endif
 
-dxvk_include_path = include_directories('./include')
+dxvk_include_path = include_directories(
+  './include',
+  'D:/source/juice/common/third_party/tracy'
+)
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
@@ -86,6 +91,7 @@ elif cpu_family == 'x86'
   endif
 endif
 
+lib_tracy = dxvk_compiler.find_library('TracyClient', dirs: 'D:/source/juice/build/common/third_party/tracy/RelWithDebInfo')
 lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
 lib_d3d9    = dxvk_compiler.find_library('d3d9')
 lib_d3d11   = dxvk_compiler.find_library('d3d11')
