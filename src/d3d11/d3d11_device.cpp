@@ -23,6 +23,12 @@
 #include "d3d11_texture.h"
 #include "d3d11_video.h"
 
+#define TRACY_ENABLE
+#define TRACY_ON_DEMAND
+#define TRACY_ONLY_LOCALHOST
+#define TRACY_DELAYED_INIT
+#include <Tracy.hpp>
+
 namespace dxvk {
   
   constexpr uint32_t D3D11DXGIDevice::DefaultFrameLatency;
@@ -73,6 +79,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
+    ZoneScoped;
     InitReturnPtr(ppBuffer);
     
     if (!pDesc)
@@ -103,6 +110,7 @@ namespace dxvk {
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
+    ZoneScoped;
     InitReturnPtr(ppTexture1D);
 
     if (!pDesc)
@@ -146,6 +154,7 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
+    ZoneScoped;
     InitReturnPtr(ppTexture2D);
 
     if (!pDesc)
@@ -179,6 +188,7 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC1*  pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D1**      ppTexture2D) {
+    ZoneScoped;
     InitReturnPtr(ppTexture2D);
 
     if (!pDesc)
@@ -222,6 +232,7 @@ namespace dxvk {
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
+    ZoneScoped;
     InitReturnPtr(ppTexture3D);
 
     if (!pDesc)
@@ -254,6 +265,7 @@ namespace dxvk {
     const D3D11_TEXTURE3D_DESC1*  pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D1**      ppTexture3D) {
+    ZoneScoped;
     InitReturnPtr(ppTexture3D);
 
     if (!pDesc)
@@ -297,6 +309,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D11ShaderResourceView**        ppSRView) {
+    ZoneScoped;
     InitReturnPtr(ppSRView);
 
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
@@ -323,6 +336,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc,
           ID3D11ShaderResourceView1**       ppSRView) {
+    ZoneScoped;
     InitReturnPtr(ppSRView);
 
     if (!pResource)
@@ -374,6 +388,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
           ID3D11UnorderedAccessView**       ppUAView) {
+    ZoneScoped;
     InitReturnPtr(ppUAView);
 
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
@@ -400,6 +415,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc,
           ID3D11UnorderedAccessView1**      ppUAView) {
+    ZoneScoped;
     InitReturnPtr(ppUAView);
     
     if (!pResource)
@@ -453,6 +469,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
+    ZoneScoped;
     InitReturnPtr(ppRTView);
 
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
@@ -479,6 +496,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc,
           ID3D11RenderTargetView1**         ppRTView) {
+    ZoneScoped;
     InitReturnPtr(ppRTView);
 
     if (!pResource)
@@ -536,6 +554,7 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
+    ZoneScoped;
     InitReturnPtr(ppDepthStencilView);
     
     if (pResource == nullptr)
@@ -586,6 +605,7 @@ namespace dxvk {
     const void*                       pShaderBytecodeWithInputSignature,
           SIZE_T                      BytecodeLength,
           ID3D11InputLayout**         ppInputLayout) {
+    ZoneScoped;
     InitReturnPtr(ppInputLayout);
 
     if (pInputElementDescs == nullptr)
@@ -727,6 +747,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11VertexShader**        ppVertexShader) {
+    ZoneScoped;
     InitReturnPtr(ppVertexShader);
     D3D11CommonShader module;
 
@@ -759,6 +780,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
+    ZoneScoped;
     InitReturnPtr(ppGeometryShader);
     D3D11CommonShader module;
     
