@@ -3,6 +3,12 @@
 #include "d3d11_device.h"
 #include "d3d11_texture.h"
 
+#define TRACY_ENABLE
+#define TRACY_ON_DEMAND
+#define TRACY_ONLY_LOCALHOST
+#define TRACY_DELAYED_INIT
+#include <Tracy.hpp>
+
 constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
 constexpr static uint32_t MaxPendingSubmits  = 6;
@@ -69,6 +75,7 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
+      ZoneScoped;
     if (!pAsync || (DataSize && !pData))
       return E_INVALIDARG;
     
@@ -102,6 +109,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::Begin(ID3D11Asynchronous* pAsync) {
+    ZoneScoped;
     D3D10DeviceLock lock = LockContext();
 
     if (unlikely(!pAsync))
@@ -120,6 +128,7 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::End(ID3D11Asynchronous* pAsync) {
+    ZoneScoped;
     D3D10DeviceLock lock = LockContext();
 
     if (unlikely(!pAsync))
@@ -149,6 +158,7 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
+    ZoneScoped;
     Flush1(D3D11_CONTEXT_TYPE_ALL, nullptr);
   }
 
@@ -156,6 +166,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush1(
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
+    ZoneScoped;
     m_parent->FlushInitContext();
 
     if (hEvent)
@@ -198,6 +209,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {
+    ZoneScoped;
     D3D10DeviceLock lock = LockContext();
 
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
@@ -228,8 +240,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::FinishCommandList(
           BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
-    InitReturnPtr(ppCommandList);
-    
+    ZoneScoped;
+    InitReturnPtr(ppCommandList);    
     Logger::err("D3D11: FinishCommandList called on immediate context");
     return DXGI_ERROR_INVALID_CALL;
   }
@@ -241,6 +253,8 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    ZoneScoped;
+
     D3D10DeviceLock lock = LockContext();
 
     if (unlikely(!pResource))
@@ -272,6 +286,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
+    ZoneScoped;
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -317,6 +332,7 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
+    ZoneScoped;
     FlushImplicit(TRUE);
     
     D3D11DeviceContext::OMSetRenderTargets(
@@ -332,6 +348,7 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
+    ZoneScoped;
     FlushImplicit(TRUE);
 
     D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
@@ -346,6 +363,7 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    ZoneScoped;
     if (unlikely(!pMappedResource))
       return E_INVALIDARG;
 
@@ -397,6 +415,7 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    ZoneScoped;
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
 
@@ -477,6 +496,7 @@ namespace dxvk {
   void D3D11ImmediateContext::UnmapImage(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
+    ZoneScoped;
     D3D11_MAP mapType = pResource->GetMapType(Subresource);
     pResource->SetMapType(Subresource, D3D11_MAP(~0u));
 
@@ -500,6 +520,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
+    ZoneScoped;
     InitReturnPtr(ppPreviousState);
 
     if (!pState)
@@ -524,6 +545,7 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::SynchronizeCsThread() {
+    ZoneScoped;
     D3D10DeviceLock lock = LockContext();
 
     // Dispatch current chunk so that all commands
@@ -536,6 +558,7 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::SynchronizeDevice() {
+    ZoneScoped;
     m_device->waitForIdle();
   }
   
@@ -544,6 +567,7 @@ namespace dxvk {
     const Rc<DxvkResource>&                 Resource,
           D3D11_MAP                         MapType,
           UINT                              MapFlags) {
+    ZoneScoped;
     // Determine access type to wait for based on map mode
     DxvkAccess access = MapType == D3D11_MAP_READ
       ? DxvkAccess::Write
@@ -583,6 +607,7 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::FlushImplicit(BOOL StrongHint) {
+    ZoneScoped;
     // Flush only if the GPU is about to go idle, in
     // order to keep the number of submissions low.
     uint32_t pending = m_device->pendingSubmissions();
@@ -601,6 +626,7 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::SignalEvent(HANDLE hEvent) {
+    ZoneScoped;
     uint64_t value = ++m_eventCount;
 
     if (m_eventSignal == nullptr)
