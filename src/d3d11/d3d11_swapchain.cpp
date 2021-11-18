@@ -2,6 +2,12 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
+#define TRACY_ENABLE
+#define TRACY_ON_DEMAND
+#define TRACY_ONLY_LOCALHOST
+#define TRACY_DELAYED_INIT
+#include <Tracy.hpp>
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -117,6 +123,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
     const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
+    ZoneScoped;
 
     m_dirty |= m_desc.Format      != pDesc->Format
             || m_desc.Width       != pDesc->Width
@@ -195,6 +202,7 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
+    ZoneScoped;
     auto options = m_parent->GetOptions();
 
     if (options->syncInterval >= 0)
@@ -236,6 +244,7 @@ namespace dxvk {
       hr = E_FAIL;
     }
 
+    FrameMark;
     return hr;
   }
 
@@ -318,6 +327,7 @@ namespace dxvk {
           D3D11ImmediateContext*  pContext,
     const vk::PresenterSync&      Sync,
           uint32_t                FrameId) {
+    ZoneScoped;
     auto lock = pContext->LockContext();
 
     // Present from CS thread so that we don't
@@ -344,6 +354,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::SynchronizePresent() {
+    ZoneScoped;
     // Recreate swap chain if the previous present call failed
     VkResult status = m_device->waitForSubmission(&m_presentStatus);
     
@@ -411,6 +422,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateRenderTargetViews() {
+    ZoneScoped;
     vk::PresenterInfo info = m_presenter->info();
 
     m_imageViews.clear();
@@ -454,6 +466,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateBackBuffer() {
+    ZoneScoped;
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     if (m_backBuffer)
