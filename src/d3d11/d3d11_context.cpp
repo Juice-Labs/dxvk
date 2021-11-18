@@ -988,9 +988,11 @@ namespace dxvk {
 
         D3D11_MAPPED_SUBRESOURCE mappedSr;
         if (likely(useMap = SUCCEEDED(Map(pDstResource, 0, mapType, 0, &mappedSr)))) {
-          // char text [1024];
-          // int length = snprintf(text, sizeof(text), "map %p %d bytes", (char*) mappedSr.pData + offset, (int) size);
-          // ZoneText(text, length);
+
+          char text [1024];
+          int length = snprintf(text, sizeof(text), "map %p %d bytes", (char*) mappedSr.pData + offset, (int) size);
+          ZoneText(text, length);
+
           std::memcpy(reinterpret_cast<char*>(mappedSr.pData) + offset, pSrcData, size);
           Unmap(pDstResource, 0);
         }
