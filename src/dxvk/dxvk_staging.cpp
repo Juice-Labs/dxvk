@@ -56,13 +56,18 @@ namespace dxvk {
 
 
   Rc<DxvkBuffer> DxvkStagingDataAlloc::createBuffer(VkDeviceSize size) {
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_STAGING_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT;
 
-    return m_device->createBuffer(info,
+    return m_device->createBuffer(info, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }

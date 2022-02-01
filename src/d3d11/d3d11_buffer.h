@@ -102,12 +102,12 @@ namespace dxvk {
         : DxvkBufferSlice();
     }
     
-    DxvkBufferSliceHandle AllocSlice() {
-      return m_buffer->allocSlice();
+    DxvkBufferSliceHandle AllocSlice(VkDxvkTypeJUICE type) {
+      return m_buffer->allocSlice(type);
     }
     
-    DxvkBufferSliceHandle DiscardSlice() {
-      m_mapped = m_buffer->allocSlice();
+    DxvkBufferSliceHandle DiscardSlice(VkDxvkTypeJUICE type) {
+      m_mapped = m_buffer->allocSlice(type);
       return m_mapped;
     }
 

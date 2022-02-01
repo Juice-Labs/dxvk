@@ -189,9 +189,9 @@ namespace dxvk {
      * \param [in] Subresource Subresource to discard
      * \returns Newly allocated mapped buffer slice
      */
-    DxvkBufferSliceHandle DiscardSlice(UINT Subresource) {
+    DxvkBufferSliceHandle DiscardSlice(UINT Subresource, VkDxvkTypeJUICE type) {
       if (Subresource < m_buffers.size()) {
-        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice();
+        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice(type);
         m_buffers[Subresource].slice = slice;
         return slice;
       } else {

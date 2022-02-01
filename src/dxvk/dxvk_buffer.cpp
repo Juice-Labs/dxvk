@@ -4,10 +4,11 @@
 #include <algorithm>
 
 namespace dxvk {
-  
+
   DxvkBuffer::DxvkBuffer(
           DxvkDevice*           device,
     const DxvkBufferCreateInfo& createInfo,
+          void*                 pNext,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
   : m_device        (device),
@@ -29,7 +30,7 @@ namespace dxvk {
       : 1;
 
     // Allocate the initial set of buffer slices
-    m_buffer = allocBuffer(m_physSliceCount);
+    m_buffer = allocBuffer(m_physSliceCount, pNext);
 
     DxvkBufferSliceHandle slice;
     slice.handle = m_buffer.buffer;
@@ -51,12 +52,12 @@ namespace dxvk {
   }
   
   
-  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount) const {
+  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, void* pNext) const {
     auto vkd = m_device->vkd();
 
     VkBufferCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    info.pNext                 = nullptr;
+    info.pNext                 = pNext;
     info.flags                 = 0;
     info.size                  = m_physSliceStride * sliceCount;
     info.usage                 = m_info.usage;

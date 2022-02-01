@@ -126,6 +126,7 @@ namespace dxvk {
     DxvkImage(
       const Rc<vk::DeviceFn>&     vkd,
       const DxvkImageCreateInfo&  createInfo,
+            void*                 pNext,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
     

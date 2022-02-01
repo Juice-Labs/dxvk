@@ -4421,6 +4421,11 @@ namespace dxvk {
   
   DxvkBufferSlice D3D11DeviceContext::AllocStagingBuffer(
           VkDeviceSize                      Size) {
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_STAGING_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -4432,7 +4437,7 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
 
-    return DxvkBufferSlice(m_device->createBuffer(info,
+    return DxvkBufferSlice(m_device->createBuffer(info, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
   }
   

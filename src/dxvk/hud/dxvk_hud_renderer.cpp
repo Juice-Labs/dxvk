@@ -136,7 +136,7 @@ namespace dxvk::hud {
   
   
   void HudRenderer::allocVertexBufferSlice() {
-    auto vertexSlice = m_vertexBuffer->allocSlice();
+    auto vertexSlice = m_vertexBuffer->allocSlice(VK_DXVK_TYPE_SLICE_VERTEX_BUFFER_JUICE);
     m_context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
     m_currTextVertex    = 0;
@@ -259,6 +259,11 @@ namespace dxvk::hud {
   
   
   Rc<DxvkImage> HudRenderer::createFontImage(const Rc<DxvkDevice>& device) {
+    VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+    dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+    dxvkCreateInfo.pNext = nullptr;
+    dxvkCreateInfo.type = VK_DXVK_TYPE_HUD_FONT_IMAGE_JUICE;
+
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
     info.format         = VK_FORMAT_R8_UNORM;
@@ -276,7 +281,7 @@ namespace dxvk::hud {
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     
-    return device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return device->createImage(info, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
   
@@ -318,13 +323,18 @@ namespace dxvk::hud {
   
   
   Rc<DxvkBuffer> HudRenderer::createVertexBuffer(const Rc<DxvkDevice>& device) {
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_HUD_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size           = sizeof(VertexBufferData);
     info.usage          = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     info.stages         = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
     info.access         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
     
-    return device->createBuffer(info,
+    return device->createBuffer(info, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

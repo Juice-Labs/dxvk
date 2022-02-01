@@ -56,7 +56,7 @@ if not dxvk_is_msvc
   endif
 endif
 
-dxvk_include_path = include_directories('./include')
+dxvk_include_path = include_directories('../../common/vulkan/include', './include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'

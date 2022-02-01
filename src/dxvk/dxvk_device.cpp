@@ -121,7 +121,15 @@ namespace dxvk {
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
-    return new DxvkBuffer(this, createInfo, m_objects.memoryManager(), memoryType);
+    return new DxvkBuffer(this, createInfo, nullptr, m_objects.memoryManager(), memoryType);
+  }
+  
+  
+  Rc<DxvkBuffer> DxvkDevice::createBuffer(
+    const DxvkBufferCreateInfo& createInfo,
+          void*                 pNext,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBuffer(this, createInfo, pNext, m_objects.memoryManager(), memoryType);
   }
   
   
@@ -135,7 +143,15 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
-    return new DxvkImage(m_vkd, createInfo, m_objects.memoryManager(), memoryType);
+    return new DxvkImage(m_vkd, createInfo, nullptr, m_objects.memoryManager(), memoryType);
+  }
+  
+  
+  Rc<DxvkImage> DxvkDevice::createImage(
+    const DxvkImageCreateInfo&  createInfo,
+          void*                 pNext,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkImage(m_vkd, createInfo, pNext, m_objects.memoryManager(), memoryType);
   }
   
   
@@ -144,6 +160,7 @@ namespace dxvk {
           VkImage               image) {
     return new DxvkImage(m_vkd, createInfo, image);
   }
+
   
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,

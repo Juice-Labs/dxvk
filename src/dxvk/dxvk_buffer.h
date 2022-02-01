@@ -106,6 +106,7 @@ namespace dxvk {
     DxvkBuffer(
             DxvkDevice*           device,
       const DxvkBufferCreateInfo& createInfo,
+            void*                 pNext,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
     
@@ -232,7 +233,7 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferSliceHandle allocSlice() {
+    DxvkBufferSliceHandle allocSlice(VkDxvkTypeJUICE type = VK_DXVK_TYPE_NONE_JUICE) {
       std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
       
       // If no slices are available, swap the two free lists.
@@ -245,7 +246,20 @@ namespace dxvk {
       // backing buffer and add all slices to the free list.
       if (unlikely(m_freeSlices.empty())) {
         if (likely(!m_lazyAlloc)) {
-          DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
+          DxvkBufferHandle handle;
+          if(type != VK_DXVK_TYPE_NONE_JUICE)
+          {
+            VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+            dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+            dxvkBufferCreateInfo.pNext = nullptr;
+            dxvkBufferCreateInfo.type = type;
+
+            handle = allocBuffer(m_physSliceCount, &dxvkBufferCreateInfo);
+          }
+          else
+          {
+            handle = allocBuffer(m_physSliceCount, nullptr);
+          }
 
           for (uint32_t i = 0; i < m_physSliceCount; i++)
             pushSlice(handle, i);
@@ -315,7 +329,8 @@ namespace dxvk {
     }
 
     DxvkBufferHandle allocBuffer(
-            VkDeviceSize          sliceCount) const;
+            VkDeviceSize          sliceCount,
+            void*                 pNext) const;
 
     VkDeviceSize computeSliceAlignment() const;
     
