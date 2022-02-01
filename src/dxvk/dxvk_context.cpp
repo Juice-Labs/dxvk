@@ -585,6 +585,11 @@ namespace dxvk {
     VkDeviceSize hiOvl = std::min(dstOffset, srcOffset) + numBytes;
 
     if (hiOvl > loOvl) {
+      VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+      dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+      dxvkBufferCreateInfo.pNext = nullptr;
+      dxvkBufferCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_BUFFER_JUICE;
+
       DxvkBufferCreateInfo bufInfo;
       bufInfo.size    = numBytes;
       bufInfo.usage   = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -594,7 +599,7 @@ namespace dxvk {
                       | VK_ACCESS_TRANSFER_READ_BIT;
 
       auto tmpBuffer = m_device->createBuffer(
-        bufInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        bufInfo, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
       
       VkDeviceSize tmpOffset = 0;
       
@@ -732,6 +737,11 @@ namespace dxvk {
                 && hiOvl.z > loOvl.z;
     
     if (overlap) {
+      VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+      dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+      dxvkCreateInfo.pNext = nullptr;
+      dxvkCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_IMAGE_JUICE;
+
       DxvkImageCreateInfo imgInfo;
       imgInfo.type          = dstImage->info().type;
       imgInfo.format        = dstImage->info().format;
@@ -749,7 +759,7 @@ namespace dxvk {
       imgInfo.layout        = VK_IMAGE_LAYOUT_GENERAL;
 
       auto tmpImage = m_device->createImage(
-        imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        imgInfo, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
       
       VkImageSubresourceLayers tmpSubresource;
       tmpSubresource.aspectMask     = dstSubresource.aspectMask;
@@ -1007,6 +1017,11 @@ namespace dxvk {
     if (srcBuffer == dstBuffer
      && srcBufferSlice.offset < dstBufferSlice.offset + dstBufferSlice.length
      && srcBufferSlice.offset + srcBufferSlice.length > dstBufferSlice.offset) {
+      VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+      dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+      dxvkBufferCreateInfo.pNext = nullptr;
+      dxvkBufferCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_BUFFER_JUICE;
+
       // Create temporary copy in case of overlapping regions
       DxvkBufferCreateInfo bufferInfo;
       bufferInfo.size   = srcBufferSlice.length;
@@ -1016,7 +1031,7 @@ namespace dxvk {
                         | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
       bufferInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
                         | VK_ACCESS_SHADER_READ_BIT;
-      Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       auto tmpBufferSlice = tmpBuffer->getSliceHandle();
 
@@ -1171,6 +1186,11 @@ namespace dxvk {
     VkDeviceSize dataSizeD = align(pixelCount * imageFormatInfo(dataFormatD)->elementSize, 256);
     VkDeviceSize dataSizeS = align(pixelCount * imageFormatInfo(dataFormatS)->elementSize, 256);
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_BUFFER_JUICE;
+
     DxvkBufferCreateInfo tmpBufferInfo;
     tmpBufferInfo.size    = dataSizeD + dataSizeS;
     tmpBufferInfo.usage   = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
@@ -1180,7 +1200,7 @@ namespace dxvk {
     tmpBufferInfo.access  = VK_ACCESS_SHADER_WRITE_BIT
                           | VK_ACCESS_TRANSFER_READ_BIT;
     
-    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // Create formatted buffer views
     DxvkBufferViewCreateInfo tmpViewInfoD;
@@ -1303,12 +1323,13 @@ namespace dxvk {
 
 
   void DxvkContext::discardBuffer(
-    const Rc<DxvkBuffer>&       buffer) {
+    const Rc<DxvkBuffer>&       buffer,
+    VkDxvkTypeJUICE             type) {
     if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
       return;
 
     if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
-      this->invalidateBuffer(buffer, buffer->allocSlice());
+      this->invalidateBuffer(buffer, buffer->allocSlice(nullptr, type));
   }
 
 
@@ -2174,13 +2195,18 @@ namespace dxvk {
 
     VkDeviceSize pixelCount = extent3D.width * extent3D.height * extent3D.depth;
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_BUFFER_JUICE;
+
     DxvkBufferCreateInfo tmpBufferInfo;
     tmpBufferInfo.size      = pixelCount * formatInfo->elementSize;
     tmpBufferInfo.usage     = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     tmpBufferInfo.stages    = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     tmpBufferInfo.access    = VK_ACCESS_SHADER_READ_BIT;
 
-    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo,
+    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -2200,7 +2226,7 @@ namespace dxvk {
     const void*                     data) {
     auto bufferSlice = buffer->getSliceHandle();
 
-    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE, bufferSlice.length);
+    auto stagingSlice = m_staging.alloc(PAGE_SIZE, bufferSlice.length);
     auto stagingHandle = stagingSlice.getSliceHandle();
     std::memcpy(stagingHandle.mapPtr, data, bufferSlice.length);
 
@@ -2945,7 +2971,7 @@ namespace dxvk {
         }
 
         auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
-        auto stagingSlice  = m_staging.alloc(CACHE_LINE_SIZE, elementSize * util::flattenImageExtent(blockCount));
+        auto stagingSlice  = m_staging.alloc(PAGE_SIZE, elementSize * util::flattenImageExtent(blockCount));
         auto stagingHandle = stagingSlice.getSliceHandle();
 
         util::packImageData(stagingHandle.mapPtr, layerData,
@@ -3312,6 +3338,11 @@ namespace dxvk {
     VkOffset3D               tgtOffset      = dstOffset;
 
     if (!useDirectRender) {
+      VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+      dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+      dxvkCreateInfo.pNext = nullptr;
+      dxvkCreateInfo.type = VK_DXVK_TYPE_TEMPORARY_COPY_IMAGE_JUICE;
+
       DxvkImageCreateInfo info;
       info.type           = dstImage->info().type;
       info.format         = viewFormat;
@@ -3326,7 +3357,7 @@ namespace dxvk {
       info.tiling         = VK_IMAGE_TILING_OPTIMAL;
       info.layout         = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
-      tgtImage = m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      tgtImage = m_device->createImage(info, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       tgtSubresource.mipLevel       = 0;
       tgtSubresource.baseArrayLayer = 0;
@@ -5214,7 +5245,7 @@ namespace dxvk {
      && (m_flags.test(DxvkContextFlag::GpXfbActive)))
       this->spillRenderPass(true);
 
-    this->invalidateBuffer(buffer, buffer->allocSlice());
+    this->invalidateBuffer(buffer, buffer->allocSlice(nullptr, VK_DXVK_TYPE_SLICE_INVALIDATE_DEVICE_LOCAL_BUFFER_JUICE));
     return true;
   }
   
@@ -5258,6 +5289,11 @@ namespace dxvk {
     if (m_zeroBuffer != nullptr && m_zeroBuffer->info().size >= size)
       return m_zeroBuffer;
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_ZERO_BUFFER_JUICE;
+
     DxvkBufferCreateInfo bufInfo;
     bufInfo.size    = align<VkDeviceSize>(size, 1 << 20);
     bufInfo.usage   = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -5266,7 +5302,7 @@ namespace dxvk {
     bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
                     | VK_ACCESS_TRANSFER_READ_BIT;
 
-    m_zeroBuffer = m_device->createBuffer(bufInfo,
+    m_zeroBuffer = m_device->createBuffer(bufInfo, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     this->initBuffer(m_zeroBuffer);

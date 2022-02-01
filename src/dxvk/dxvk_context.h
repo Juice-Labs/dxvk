@@ -481,7 +481,8 @@ namespace dxvk {
      * \param [in] buffer The buffer to discard
      */
     void discardBuffer(
-      const Rc<DxvkBuffer>&       buffer);
+      const Rc<DxvkBuffer>&       buffer,
+      VkDxvkTypeJUICE             type);
     
     /**
      * \brief Discards contents of an image view

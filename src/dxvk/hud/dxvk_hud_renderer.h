@@ -175,7 +175,7 @@ namespace dxvk::hud {
     Rc<DxvkBufferView> createDataView();
 
     Rc<DxvkBuffer> createFontBuffer();
-    Rc<DxvkImage> createFontImage();
+    Rc<DxvkImage> createFontImage(const Rc<DxvkDevice>& device);
     Rc<DxvkImageView> createFontView();
     Rc<DxvkSampler> createFontSampler();
     

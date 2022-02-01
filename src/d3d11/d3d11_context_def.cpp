@@ -288,7 +288,7 @@ namespace dxvk {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
-      auto bufferSlice = pBuffer->AllocSlice();
+      auto bufferSlice = pBuffer->AllocSlice(VK_DXVK_TYPE_DEFERRED_MAP_DISCARD_BUFFER_JUICE);
       pMappedResource->pData = bufferSlice.mapPtr;
 
       EmitCs([
@@ -307,7 +307,7 @@ namespace dxvk {
         cDstBuffer = pBuffer->GetBuffer(),
         cDataSlice = dataSlice
       ] (DxvkContext* ctx) {
-        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
+        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice(nullptr, VK_DXVK_TYPE_DEFERRED_MAP_BUFFER_JUICE);
         std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
         ctx->invalidateBuffer(cDstBuffer, slice);
       });

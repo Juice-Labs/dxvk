@@ -19,7 +19,7 @@ namespace dxvk::hud {
     m_dataView      (createDataView()),
     m_dataOffset    (0ull),
     m_fontBuffer    (createFontBuffer()),
-    m_fontImage     (createFontImage()),
+    m_fontImage     (createFontImage(device)),
     m_fontView      (createFontView()),
     m_fontSampler   (createFontSampler()) {
 
@@ -252,7 +252,12 @@ namespace dxvk::hud {
   }
 
 
-  Rc<DxvkImage> HudRenderer::createFontImage() {
+  Rc<DxvkImage> HudRenderer::createFontImage(const Rc<DxvkDevice>& device) {
+    VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+    dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+    dxvkCreateInfo.pNext = nullptr;
+    dxvkCreateInfo.type = VK_DXVK_TYPE_HUD_FONT_IMAGE_JUICE;
+
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
     info.format         = VK_FORMAT_R8_UNORM;
@@ -270,7 +275,7 @@ namespace dxvk::hud {
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     
-    return m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return m_device->createImage(info, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
   

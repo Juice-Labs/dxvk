@@ -369,6 +369,14 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetMemoryWin32HandleKHR);
     VULKAN_FN(vkGetMemoryWin32HandlePropertiesKHR);
     #endif
+
+    #ifdef VK_KHR_copy_commands2
+    VULKAN_FN(vkCmdCopyBuffer2KHR);
+    VULKAN_FN(vkCmdCopyImage2KHR);
+    VULKAN_FN(vkCmdCopyBufferToImage2KHR);
+    VULKAN_FN(vkCmdCopyImageToBuffer2KHR);
+    VULKAN_FN(vkCmdBlitImage2KHR);
+    #endif
   };
   
 }

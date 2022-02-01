@@ -57,5 +57,5 @@ namespace dxvk {
     m_buffer = nullptr;
     m_offset = 0;
   }
-  
+
 }

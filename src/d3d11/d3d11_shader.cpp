@@ -55,6 +55,11 @@ namespace dxvk {
     
     // Create shader constant buffer if necessary
     if (m_shader->shaderConstants().data() != nullptr) {
+      VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+      dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+      dxvkBufferCreateInfo.pNext = nullptr;
+      dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_SHADER_CONSTANTS_BUFFER_JUICE;
+
       DxvkBufferCreateInfo info;
       info.size   = m_shader->shaderConstants().sizeInBytes();
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -66,7 +71,7 @@ namespace dxvk {
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
       
-      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, memFlags);
+      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, &dxvkBufferCreateInfo, memFlags);
 
       std::memcpy(m_buffer->mapPtr(0),
         m_shader->shaderConstants().data(),

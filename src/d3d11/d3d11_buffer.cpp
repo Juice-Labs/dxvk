@@ -71,7 +71,9 @@ namespace dxvk {
 
     // Create the buffer and set the entire buffer slice as mapped,
     // so that we only have to update it when invalidating th buffer
-    m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
+    auto d3d11BufferCreateInfo = GetJuiceInfo();
+
+    m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, &d3d11BufferCreateInfo, GetMemoryFlags());
     m_mapped = m_buffer->getSliceHandle();
 
     m_mapMode = DetermineMapMode();
@@ -259,8 +261,37 @@ namespace dxvk {
   }
 
 
+  VkD3D11BufferCreateInfoJUICE D3D11Buffer::GetJuiceInfo() const {
+    VkD3D11BufferCreateInfoJUICE d3d11BufferCreateInfo;
+    d3d11BufferCreateInfo.sType = VK_STRUCTURE_TYPE_D3D11_BUFFER_CREATE_INFO_JUICE;
+    d3d11BufferCreateInfo.pNext = nullptr;
+    d3d11BufferCreateInfo.bindFlags = VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_VERTEX_BUFFER) != 0) ? VK_D3D11_BIND_VERTEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_INDEX_BUFFER) != 0) ? VK_D3D11_BIND_INDEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0) ? VK_D3D11_BIND_CONSTANT_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0) ? VK_D3D11_BIND_SHADER_RESOURCE_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_STREAM_OUTPUT) != 0) ? VK_D3D11_BIND_STREAM_OUTPUT_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) != 0) ? VK_D3D11_BIND_RENDER_TARGET_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) != 0) ? VK_D3D11_BIND_DEPTH_STENCIL_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0) ? VK_D3D11_BIND_UNORDERED_ACCESS_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11BufferCreateInfo.usage = (m_desc.Usage == D3D11_USAGE_DEFAULT)   ? VK_D3D11_USAGE_DEFAULT_JUICE   :
+                                  (m_desc.Usage == D3D11_USAGE_IMMUTABLE) ? VK_D3D11_USAGE_IMMUTABLE_JUICE :
+                                  (m_desc.Usage == D3D11_USAGE_DYNAMIC)   ? VK_D3D11_USAGE_DYNAMIC_JUICE   :
+                                  (m_desc.Usage == D3D11_USAGE_STAGING)   ? VK_D3D11_USAGE_STAGING_JUICE   : VK_D3D11_USAGE_DEFAULT_JUICE;
+    d3d11BufferCreateInfo.cpuAccessFlags = VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11BufferCreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) != 0) ? VK_D3D11_CPU_ACCESS_WRITE_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11BufferCreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) != 0) ? VK_D3D11_CPU_ACCESS_READ_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    return d3d11BufferCreateInfo;
+  }
+
+
   Rc<DxvkBuffer> D3D11Buffer::CreateSoCounterBuffer() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
+
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_SO_COUNTER_BUFFER_JUICE;
 
     DxvkBufferCreateInfo info;
     info.size   = sizeof(D3D11SOCounter);
@@ -276,7 +307,7 @@ namespace dxvk {
                 | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return device->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
 

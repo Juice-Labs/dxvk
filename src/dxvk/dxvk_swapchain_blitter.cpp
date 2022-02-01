@@ -235,6 +235,11 @@ namespace dxvk {
     if (n) {
       // Reuse existing image if possible
       if (m_gammaImage == nullptr || m_gammaImage->info().extent.width != n) {
+        VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+        dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+        dxvkCreateInfo.pNext = nullptr;
+        dxvkCreateInfo.type = VK_DXVK_TYPE_GAMMA_IMAGE_JUICE;
+
         DxvkImageCreateInfo imgInfo;
         imgInfo.type        = VK_IMAGE_TYPE_1D;
         imgInfo.format      = VK_FORMAT_R16G16B16A16_UNORM;
@@ -253,7 +258,7 @@ namespace dxvk {
         imgInfo.layout      = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         
         m_gammaImage = m_device->createImage(
-          imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+          imgInfo, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         DxvkImageViewCreateInfo viewInfo;
         viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
@@ -352,6 +357,11 @@ namespace dxvk {
   }
 
   void DxvkSwapchainBlitter::createResolveImage(const DxvkImageCreateInfo& info) {
+    VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+    dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+    dxvkCreateInfo.pNext = nullptr;
+    dxvkCreateInfo.type = VK_DXVK_TYPE_RESOLVE_IMAGE_JUICE;
+
     DxvkImageCreateInfo newInfo;
     newInfo.type = VK_IMAGE_TYPE_2D;
     newInfo.format = info.format;
@@ -371,7 +381,7 @@ namespace dxvk {
                    | VK_ACCESS_SHADER_READ_BIT;
     newInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     newInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    m_resolveImage = m_device->createImage(newInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_resolveImage = m_device->createImage(newInfo, &dxvkCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;

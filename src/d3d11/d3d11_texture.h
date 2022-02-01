@@ -208,9 +208,10 @@ namespace dxvk {
      * \param [in] Subresource Subresource to discard
      * \returns Newly allocated mapped buffer slice
      */
-    DxvkBufferSliceHandle DiscardSlice(UINT Subresource) {
+    DxvkBufferSliceHandle DiscardSlice(UINT Subresource, VkDxvkTypeJUICE type) {
       if (Subresource < m_buffers.size()) {
-        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice();
+        auto info = GetJuiceInfo();
+        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice(&info, type);
         m_buffers[Subresource].slice = slice;
         return slice;
       } else {
@@ -430,6 +431,9 @@ namespace dxvk {
     
     static VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage);
+    
+    VkD3D11ImageCreateInfoJUICE GetJuiceInfo() const;
+
   };
 
 

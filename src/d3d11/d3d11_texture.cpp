@@ -224,11 +224,14 @@ namespace dxvk {
     // in case it is going to be mapped directly.
     VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       memoryProperties = GetMemoryFlags();
-    
+    }
+
+    auto d3d11CreateInfo = GetJuiceInfo();
+
     if (vkImage == VK_NULL_HANDLE)
-      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
+      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, &d3d11CreateInfo, memoryProperties);
     else
       m_image = m_device->GetDXVKDevice()->createImageFromVkImage(imageInfo, vkImage);
 
@@ -661,6 +664,11 @@ namespace dxvk {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_TEXTURE_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = GetSubresourceLayout(formatInfo->aspectMask, MipLevel).Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -684,7 +692,7 @@ namespace dxvk {
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
     MappedBuffer result;
-    result.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
+    result.buffer = m_device->GetDXVKDevice()->createBuffer(info, &dxvkBufferCreateInfo, memType);
     result.slice = result.buffer->getSliceHandle();
     return result;
   }
@@ -729,6 +737,30 @@ namespace dxvk {
     
     // Otherwise, we have to stick with the default layout
     return VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+
+  VkD3D11ImageCreateInfoJUICE D3D11CommonTexture::GetJuiceInfo() const {
+    VkD3D11ImageCreateInfoJUICE d3d11CreateInfo;
+    d3d11CreateInfo.sType = VK_STRUCTURE_TYPE_D3D11_IMAGE_CREATE_INFO_JUICE;
+    d3d11CreateInfo.pNext = nullptr;
+    d3d11CreateInfo.bindFlags = VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_VERTEX_BUFFER) != 0) ? VK_D3D11_BIND_VERTEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_INDEX_BUFFER) != 0) ? VK_D3D11_BIND_INDEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0) ? VK_D3D11_BIND_CONSTANT_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0) ? VK_D3D11_BIND_SHADER_RESOURCE_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_STREAM_OUTPUT) != 0) ? VK_D3D11_BIND_STREAM_OUTPUT_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) != 0) ? VK_D3D11_BIND_RENDER_TARGET_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) != 0) ? VK_D3D11_BIND_DEPTH_STENCIL_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0) ? VK_D3D11_BIND_UNORDERED_ACCESS_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.usage = (m_desc.Usage == D3D11_USAGE_DEFAULT)   ? VK_D3D11_USAGE_DEFAULT_JUICE   :
+                            (m_desc.Usage == D3D11_USAGE_IMMUTABLE) ? VK_D3D11_USAGE_IMMUTABLE_JUICE :
+                            (m_desc.Usage == D3D11_USAGE_DYNAMIC)   ? VK_D3D11_USAGE_DYNAMIC_JUICE   :
+                            (m_desc.Usage == D3D11_USAGE_STAGING)   ? VK_D3D11_USAGE_STAGING_JUICE   : VK_D3D11_USAGE_DEFAULT_JUICE;
+    d3d11CreateInfo.cpuAccessFlags = VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11CreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) != 0) ? VK_D3D11_CPU_ACCESS_WRITE_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11CreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) != 0) ? VK_D3D11_CPU_ACCESS_READ_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    return d3d11CreateInfo;
   }
   
   

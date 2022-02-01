@@ -10,6 +10,7 @@ namespace dxvk {
   DxvkImage::DxvkImage(
     const DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
+          void*                 pNext,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
   : m_vkd(device->vkd()), m_device(device), m_info(createInfo), m_memFlags(memFlags) {
@@ -24,7 +25,7 @@ namespace dxvk {
     // allows some drivers to enable image compression
     VkImageFormatListCreateInfoKHR formatList;
     formatList.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
-    formatList.pNext           = nullptr;
+    formatList.pNext           = pNext;
     formatList.viewFormatCount = createInfo.viewFormatCount;
     formatList.pViewFormats    = createInfo.viewFormats;
     

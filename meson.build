@@ -54,7 +54,15 @@ add_project_arguments(cc.get_supported_arguments(compiler_args), language: 'c')
 add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language: 'cpp')
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
-dxvk_include_path = include_directories('./include')
+dxvk_buildtype = get_option('buildtype')
+dxvk_debug     = dxvk_buildtype == 'debug' or dxvk_buildtype == 'debugoptimized'
+
+if dxvk_debug
+else
+  add_project_arguments('-DNDEBUG',   language : 'c')
+endif
+
+dxvk_include_path = include_directories('../../common/vulkan/include', './include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
@@ -70,10 +78,9 @@ lib_d3d11   = cpp.find_library('d3d11')
 lib_dxgi    = cpp.find_library('dxgi')
 lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
 
-if dxvk_is_msvc
+lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47', required : false)
+if not lib_d3dcompiler_47.found()
   lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
-else
-  lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47')
 endif
 
 exe_ext = ''

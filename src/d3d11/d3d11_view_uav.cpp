@@ -430,6 +430,11 @@ namespace dxvk {
   Rc<DxvkBuffer> D3D11UnorderedAccessView::CreateCounterBuffer() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_UAV_COUNTER_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = sizeof(uint32_t);
     info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -441,7 +446,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return device->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
 }

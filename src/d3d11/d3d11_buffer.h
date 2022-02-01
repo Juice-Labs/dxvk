@@ -101,12 +101,14 @@ namespace dxvk {
         : DxvkBufferSlice();
     }
     
-    DxvkBufferSliceHandle AllocSlice() {
-      return m_buffer->allocSlice();
+    DxvkBufferSliceHandle AllocSlice(VkDxvkTypeJUICE type) {
+      auto info = GetJuiceInfo();
+      return m_buffer->allocSlice(&info, type);
     }
     
-    DxvkBufferSliceHandle DiscardSlice() {
-      m_mapped = m_buffer->allocSlice();
+    DxvkBufferSliceHandle DiscardSlice(VkDxvkTypeJUICE type) {
+      auto info = GetJuiceInfo();
+      m_mapped = m_buffer->allocSlice(&info, type);
       return m_mapped;
     }
 
@@ -165,6 +167,7 @@ namespace dxvk {
 
     D3D11_COMMON_BUFFER_MAP_MODE DetermineMapMode();
 
+    VkD3D11BufferCreateInfoJUICE GetJuiceInfo() const;
   };
 
 

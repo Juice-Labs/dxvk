@@ -362,7 +362,7 @@ namespace dxvk {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      auto physSlice = pResource->DiscardSlice();
+      auto physSlice = pResource->DiscardSlice(VK_DXVK_TYPE_IMMEDIATE_MAP_DISCARD_BUFFER_JUICE);
       pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = bufferSize;
       pMappedResource->DepthPitch = bufferSize;
@@ -410,7 +410,7 @@ namespace dxvk {
         FlushImplicit(TRUE);
 
         auto prevSlice = pResource->GetMappedSlice();
-        auto physSlice = pResource->DiscardSlice();
+        auto physSlice = pResource->DiscardSlice(VK_DXVK_TYPE_IMMEDIATE_MAP_BUFFER_JUICE);
 
         EmitCs([
           cBuffer      = std::move(buffer),
@@ -543,7 +543,7 @@ namespace dxvk {
         FlushImplicit(TRUE);
 
         DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
-        DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
+        DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource, VK_DXVK_TYPE_IMMEDIATE_MAP_DISCARD_IMAGE_JUICE);
 
         EmitCs([
           cImageBuffer = mappedBuffer,
@@ -623,7 +623,7 @@ namespace dxvk {
     DxvkBufferSliceHandle slice;
 
     if (likely(CopyFlags != D3D11_COPY_NO_OVERWRITE)) {
-      slice = pDstBuffer->DiscardSlice();
+      slice = pDstBuffer->DiscardSlice(VK_DXVK_TYPE_IMMEDIATE_UPDATE_MAPPED_BUFFER_WITH_OVERWRITE_JUICE);
 
       EmitCs([
         cBuffer      = pDstBuffer->GetBuffer(),

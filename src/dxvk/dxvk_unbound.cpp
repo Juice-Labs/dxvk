@@ -59,6 +59,11 @@ namespace dxvk {
   
   
   Rc<DxvkBuffer> DxvkUnboundResources::createBuffer(DxvkDevice* dev) {
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_UNBOUND_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size       = MaxUniformBufferSize;
     info.usage      = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -75,7 +80,7 @@ namespace dxvk {
                     | VK_ACCESS_SHADER_READ_BIT
                     | VK_ACCESS_SHADER_WRITE_BIT;
     
-    return dev->createBuffer(info,
+    return dev->createBuffer(info, &dxvkBufferCreateInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
@@ -96,6 +101,11 @@ namespace dxvk {
           DxvkDevice*     dev,
           VkImageType     type,
           uint32_t        layers) {
+    VkDxvkImageCreateInfoJUICE dxvkCreateInfo;
+    dxvkCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_IMAGE_CREATE_INFO_JUICE;
+    dxvkCreateInfo.pNext = nullptr;
+    dxvkCreateInfo.type = VK_DXVK_TYPE_UNBOUND_IMAGE_JUICE;
+
     DxvkImageCreateInfo info;
     info.type        = type;
     info.format      = VK_FORMAT_R32_UINT;
@@ -116,7 +126,7 @@ namespace dxvk {
     if (type == VK_IMAGE_TYPE_2D)
       info.flags       |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
-    return dev->createImage(info,
+    return dev->createImage(info, &dxvkCreateInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
