@@ -345,6 +345,7 @@ namespace dxvk {
     }
     
     void cmdBlitImage(
+            void*                   pNext,
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,
             VkImage                 dstImage,
@@ -352,12 +353,51 @@ namespace dxvk {
             uint32_t                regionCount,
       const VkImageBlit*            pRegions,
             VkFilter                filter) {
-      m_vkd->vkCmdBlitImage(m_execBuffer,
-        srcImage, srcImageLayout,
-        dstImage, dstImageLayout,
-        regionCount, pRegions, filter);
+      static thread_local std::vector<VkImageBlit2KHR> regions;
+      regions.resize(regionCount);
+      for(uint32_t i = 0; i < regionCount; ++i)
+      {
+        regions[i].sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR;
+        regions[i].pNext = nullptr;
+        regions[i].srcSubresource = pRegions[i].srcSubresource;
+        regions[i].srcOffsets[0] = pRegions[i].srcOffsets[0];
+        regions[i].srcOffsets[1] = pRegions[i].srcOffsets[1];
+        regions[i].dstSubresource = pRegions[i].dstSubresource;
+        regions[i].dstOffsets[0] = pRegions[i].dstOffsets[0];
+        regions[i].dstOffsets[1] = pRegions[i].dstOffsets[1];
+      }
+
+      VkBlitImageInfo2KHR info{
+        .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2_KHR,
+        .pNext = pNext,
+        .srcImage = srcImage,
+        .srcImageLayout = srcImageLayout,
+        .dstImage = dstImage,
+        .dstImageLayout = dstImageLayout,
+        .regionCount = regionCount,
+        .pRegions = regions.data(),
+        .filter = filter
+      };
+
+      m_vkd->vkCmdBlitImage2KHR(m_execBuffer, &info);
     }
     
+
+    void cmdBlitImage(
+            VkImage                 srcImage,
+            VkImageLayout           srcImageLayout,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkImageBlit*            pRegions,
+            VkFilter                filter) {
+      cmdBlitImage(nullptr, 
+        srcImage, srcImageLayout, 
+        dstImage, dstImageLayout, 
+        regionCount, pRegions, 
+        filter);
+    }
+
     
     void cmdClearAttachments(
             uint32_t                attachmentCount,
@@ -396,15 +436,85 @@ namespace dxvk {
     
     void cmdCopyBuffer(
             DxvkCmdBuffer           cmdBuffer,
+            void*                   pNext,
             VkBuffer                srcBuffer,
             VkBuffer                dstBuffer,
             uint32_t                regionCount,
       const VkBufferCopy*           pRegions) {
       m_cmdBuffersUsed.set(cmdBuffer);
 
-      m_vkd->vkCmdCopyBuffer(getCmdBuffer(cmdBuffer),
-        srcBuffer, dstBuffer,
+      static thread_local std::vector<VkBufferCopy2KHR> regions;
+      regions.resize(regionCount);
+      for(uint32_t i = 0; i < regionCount; ++i)
+      {
+        regions[i].sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR;
+        regions[i].pNext = nullptr;
+        regions[i].srcOffset = pRegions[i].srcOffset;
+        regions[i].dstOffset = pRegions[i].dstOffset;
+        regions[i].size = pRegions[i].size;
+      }
+
+      VkCopyBufferInfo2KHR info{
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR,
+        .pNext = pNext,
+        .srcBuffer = srcBuffer,
+        .dstBuffer = dstBuffer,
+        .regionCount = regionCount,
+        .pRegions = regions.data()
+      };
+
+      m_vkd->vkCmdCopyBuffer2KHR(getCmdBuffer(cmdBuffer), &info);
+    }
+    
+    
+    void cmdCopyBuffer(
+            DxvkCmdBuffer           cmdBuffer,
+            VkBuffer                srcBuffer,
+            VkBuffer                dstBuffer,
+            uint32_t                regionCount,
+      const VkBufferCopy*           pRegions) {
+      cmdCopyBuffer(cmdBuffer, nullptr, 
+        srcBuffer, 
+        dstBuffer, 
         regionCount, pRegions);
+    }
+    
+    
+    void cmdCopyBufferToImage(
+            DxvkCmdBuffer           cmdBuffer,
+            void*                   pNext,
+            VkBuffer                srcBuffer,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkBufferImageCopy*      pRegions) {
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      static thread_local std::vector<VkBufferImageCopy2KHR> regions;
+      regions.resize(regionCount);
+      for(uint32_t i = 0; i < regionCount; ++i)
+      {
+        regions[i].sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR;
+        regions[i].pNext = nullptr;
+        regions[i].bufferOffset = pRegions[i].bufferOffset;
+        regions[i].bufferRowLength = pRegions[i].bufferRowLength;
+        regions[i].bufferImageHeight = pRegions[i].bufferImageHeight;
+        regions[i].imageSubresource = pRegions[i].imageSubresource;
+        regions[i].imageOffset = pRegions[i].imageOffset;
+        regions[i].imageExtent = pRegions[i].imageExtent;
+      }
+
+      VkCopyBufferToImageInfo2KHR info{
+        .sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2_KHR,
+        .pNext = pNext,
+        .srcBuffer = srcBuffer,
+        .dstImage = dstImage,
+        .dstImageLayout = dstImageLayout,
+        .regionCount = regionCount,
+        .pRegions = regions.data()
+      };
+
+      m_vkd->vkCmdCopyBufferToImage2KHR(getCmdBuffer(cmdBuffer), &info);
     }
     
     
@@ -415,11 +525,49 @@ namespace dxvk {
             VkImageLayout           dstImageLayout,
             uint32_t                regionCount,
       const VkBufferImageCopy*      pRegions) {
+      cmdCopyBufferToImage(cmdBuffer, nullptr, 
+        srcBuffer, 
+        dstImage, dstImageLayout,
+        regionCount, pRegions);
+    }
+    
+    
+    void cmdCopyImage(
+            DxvkCmdBuffer           cmdBuffer,
+            void*                   pNext,
+            VkImage                 srcImage,
+            VkImageLayout           srcImageLayout,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkImageCopy*            pRegions) {
       m_cmdBuffersUsed.set(cmdBuffer);
 
-      m_vkd->vkCmdCopyBufferToImage(getCmdBuffer(cmdBuffer),
-        srcBuffer, dstImage, dstImageLayout,
-        regionCount, pRegions);
+      static thread_local std::vector<VkImageCopy2KHR> regions;
+      regions.resize(regionCount);
+      for(uint32_t i = 0; i < regionCount; ++i)
+      {
+        regions[i].sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2_KHR;
+        regions[i].pNext = nullptr;
+        regions[i].srcSubresource = pRegions[i].srcSubresource;
+        regions[i].srcOffset = pRegions[i].srcOffset;
+        regions[i].dstSubresource = pRegions[i].dstSubresource;
+        regions[i].dstOffset = pRegions[i].dstOffset;
+        regions[i].extent = pRegions[i].extent;
+      }
+
+      VkCopyImageInfo2KHR info{
+        .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2_KHR,
+        .pNext = pNext,
+        .srcImage = srcImage,
+        .srcImageLayout = srcImageLayout,
+        .dstImage = dstImage,
+        .dstImageLayout = dstImageLayout,
+        .regionCount = regionCount,
+        .pRegions = regions.data()
+      };
+
+      m_vkd->vkCmdCopyImage2KHR(getCmdBuffer(cmdBuffer), &info);
     }
     
     
@@ -431,12 +579,48 @@ namespace dxvk {
             VkImageLayout           dstImageLayout,
             uint32_t                regionCount,
       const VkImageCopy*            pRegions) {
-      m_cmdBuffersUsed.set(cmdBuffer);
-
-      m_vkd->vkCmdCopyImage(getCmdBuffer(cmdBuffer),
+      cmdCopyImage(cmdBuffer, nullptr, 
         srcImage, srcImageLayout,
         dstImage, dstImageLayout,
         regionCount, pRegions);
+    }
+    
+    
+    void cmdCopyImageToBuffer(
+            DxvkCmdBuffer           cmdBuffer,
+            void*                   pNext,
+            VkImage                 srcImage,
+            VkImageLayout           srcImageLayout,
+            VkBuffer                dstBuffer,
+            uint32_t                regionCount,
+      const VkBufferImageCopy*      pRegions) {
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      static thread_local std::vector<VkBufferImageCopy2KHR> regions;
+      regions.resize(regionCount);
+      for(uint32_t i = 0; i < regionCount; ++i)
+      {
+        regions[i].sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR;
+        regions[i].pNext = nullptr;
+        regions[i].bufferOffset = pRegions[i].bufferOffset;
+        regions[i].bufferRowLength = pRegions[i].bufferRowLength;
+        regions[i].bufferImageHeight = pRegions[i].bufferImageHeight;
+        regions[i].imageSubresource = pRegions[i].imageSubresource;
+        regions[i].imageOffset = pRegions[i].imageOffset;
+        regions[i].imageExtent = pRegions[i].imageExtent;
+      }
+
+      VkCopyImageToBufferInfo2KHR info{
+        .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2_KHR,
+        .pNext = pNext,
+        .srcImage = srcImage,
+        .srcImageLayout = srcImageLayout,
+        .dstBuffer = dstBuffer,
+        .regionCount = regionCount,
+        .pRegions = regions.data()
+      };
+
+      m_vkd->vkCmdCopyImageToBuffer2KHR(getCmdBuffer(cmdBuffer), &info);
     }
     
     
@@ -447,10 +631,9 @@ namespace dxvk {
             VkBuffer                dstBuffer,
             uint32_t                regionCount,
       const VkBufferImageCopy*      pRegions) {
-      m_cmdBuffersUsed.set(cmdBuffer);
-
-      m_vkd->vkCmdCopyImageToBuffer(getCmdBuffer(cmdBuffer),
-        srcImage, srcImageLayout, dstBuffer,
+      cmdCopyImageToBuffer(cmdBuffer, nullptr, 
+        srcImage, srcImageLayout,
+        dstBuffer,
         regionCount, pRegions);
     }
 

@@ -551,7 +551,12 @@ namespace dxvk {
           region.imageOffset        = offset;
           region.imageExtent        = extent;
 
-          m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
+          VkDxvkCopyInfoJUICE info;
+          info.sType = VK_STRUCTURE_TYPE_DXVK_COPY_INFO_JUICE;
+          info.pNext = nullptr;
+          info.type = VK_DXVK_COPY_TYPE_CLEAR_JUICE;
+
+          m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info,
             zeroHandle.handle, image->handle(), layout, 1, &region);
         }
       }

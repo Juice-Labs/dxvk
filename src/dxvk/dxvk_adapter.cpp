@@ -263,7 +263,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 27> devExtensionList = {{
+    std::array<DxvkExt*, 28> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -292,6 +292,7 @@ namespace dxvk {
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
+      &devExtensions.khrCopyCommands2,
     }};
 
     // Only enable Cuda interop extensions in 64-bit builds in
