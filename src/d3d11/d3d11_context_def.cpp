@@ -279,7 +279,7 @@ namespace dxvk {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
-      auto bufferSlice = pBuffer->AllocSlice(VK_DXVK_TYPE_SLICE_MAP_DISCARD_BUFFER_JUICE);
+      auto bufferSlice = pBuffer->AllocSlice(VK_DXVK_TYPE_DEFERRED_MAP_DISCARD_BUFFER_JUICE);
       pMapEntry->MapPointer = bufferSlice.mapPtr;
 
       EmitCs([
