@@ -233,7 +233,7 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferSliceHandle allocSlice(VkDxvkTypeJUICE type = VK_DXVK_TYPE_NONE_JUICE) {
+    DxvkBufferSliceHandle allocSlice(void* pNext = nullptr, VkDxvkTypeJUICE type = VK_DXVK_TYPE_NONE_JUICE) {
       std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
       
       // If no slices are available, swap the two free lists.
@@ -251,14 +251,14 @@ namespace dxvk {
           {
             VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
             dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
-            dxvkBufferCreateInfo.pNext = nullptr;
+            dxvkBufferCreateInfo.pNext = pNext;
             dxvkBufferCreateInfo.type = type;
 
             handle = allocBuffer(m_physSliceCount, &dxvkBufferCreateInfo);
           }
           else
           {
-            handle = allocBuffer(m_physSliceCount, nullptr);
+            handle = allocBuffer(m_physSliceCount, pNext);
           }
 
           for (uint32_t i = 0; i < m_physSliceCount; i++)

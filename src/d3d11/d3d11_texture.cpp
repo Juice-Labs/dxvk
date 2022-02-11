@@ -208,26 +208,8 @@ namespace dxvk {
                        | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
 
-    VkD3D11ImageCreateInfoJUICE d3d11CreateInfo;
-    d3d11CreateInfo.sType = VK_STRUCTURE_TYPE_D3D11_IMAGE_CREATE_INFO_JUICE;
-    d3d11CreateInfo.pNext = nullptr;
-    d3d11CreateInfo.bindFlags = VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) != 0) ? VK_D3D11_BIND_VERTEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) != 0) ? VK_D3D11_BIND_INDEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0) ? VK_D3D11_BIND_CONSTANT_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0) ? VK_D3D11_BIND_SHADER_RESOURCE_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) != 0) ? VK_D3D11_BIND_STREAM_OUTPUT_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_RENDER_TARGET) != 0) ? VK_D3D11_BIND_RENDER_TARGET_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) != 0) ? VK_D3D11_BIND_DEPTH_STENCIL_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.bindFlags |= ((pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0) ? VK_D3D11_BIND_UNORDERED_ACCESS_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
-    d3d11CreateInfo.usage = (pDesc->Usage == D3D11_USAGE_DEFAULT)   ? VK_D3D11_USAGE_DEFAULT_JUICE   :
-                            (pDesc->Usage == D3D11_USAGE_IMMUTABLE) ? VK_D3D11_USAGE_IMMUTABLE_JUICE :
-                            (pDesc->Usage == D3D11_USAGE_DYNAMIC)   ? VK_D3D11_USAGE_DYNAMIC_JUICE   :
-                            (pDesc->Usage == D3D11_USAGE_STAGING)   ? VK_D3D11_USAGE_STAGING_JUICE   : VK_D3D11_USAGE_DEFAULT_JUICE;
-    d3d11CreateInfo.cpuAccessFlags = VK_D3D11_CPU_ACCESS_NONE_JUICE;
-    d3d11CreateInfo.cpuAccessFlags |= ((pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) != 0) ? VK_D3D11_CPU_ACCESS_WRITE_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
-    d3d11CreateInfo.cpuAccessFlags |= ((pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) != 0) ? VK_D3D11_CPU_ACCESS_READ_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
-    
+    auto d3d11CreateInfo = GetJuiceInfo();
+
     if (vkImage == VK_NULL_HANDLE)
       m_image = m_device->GetDXVKDevice()->createImage(imageInfo, &d3d11CreateInfo, memoryProperties);
     else
@@ -666,6 +648,30 @@ namespace dxvk {
     
     // Otherwise, we have to stick with the default layout
     return VK_IMAGE_LAYOUT_GENERAL;
+  }
+
+
+  VkD3D11ImageCreateInfoJUICE D3D11CommonTexture::GetJuiceInfo() const {
+    VkD3D11ImageCreateInfoJUICE d3d11CreateInfo;
+    d3d11CreateInfo.sType = VK_STRUCTURE_TYPE_D3D11_IMAGE_CREATE_INFO_JUICE;
+    d3d11CreateInfo.pNext = nullptr;
+    d3d11CreateInfo.bindFlags = VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_VERTEX_BUFFER) != 0) ? VK_D3D11_BIND_VERTEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_INDEX_BUFFER) != 0) ? VK_D3D11_BIND_INDEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0) ? VK_D3D11_BIND_CONSTANT_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0) ? VK_D3D11_BIND_SHADER_RESOURCE_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_STREAM_OUTPUT) != 0) ? VK_D3D11_BIND_STREAM_OUTPUT_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) != 0) ? VK_D3D11_BIND_RENDER_TARGET_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) != 0) ? VK_D3D11_BIND_DEPTH_STENCIL_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0) ? VK_D3D11_BIND_UNORDERED_ACCESS_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11CreateInfo.usage = (m_desc.Usage == D3D11_USAGE_DEFAULT)   ? VK_D3D11_USAGE_DEFAULT_JUICE   :
+                            (m_desc.Usage == D3D11_USAGE_IMMUTABLE) ? VK_D3D11_USAGE_IMMUTABLE_JUICE :
+                            (m_desc.Usage == D3D11_USAGE_DYNAMIC)   ? VK_D3D11_USAGE_DYNAMIC_JUICE   :
+                            (m_desc.Usage == D3D11_USAGE_STAGING)   ? VK_D3D11_USAGE_STAGING_JUICE   : VK_D3D11_USAGE_DEFAULT_JUICE;
+    d3d11CreateInfo.cpuAccessFlags = VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11CreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) != 0) ? VK_D3D11_CPU_ACCESS_WRITE_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11CreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) != 0) ? VK_D3D11_CPU_ACCESS_READ_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    return d3d11CreateInfo;
   }
   
   

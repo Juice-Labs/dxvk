@@ -136,7 +136,7 @@ namespace dxvk::hud {
   
   
   void HudRenderer::allocVertexBufferSlice() {
-    auto vertexSlice = m_vertexBuffer->allocSlice(VK_DXVK_TYPE_SLICE_VERTEX_BUFFER_JUICE);
+    auto vertexSlice = m_vertexBuffer->allocSlice(nullptr, VK_DXVK_TYPE_SLICE_VERTEX_BUFFER_JUICE);
     m_context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
     m_currTextVertex    = 0;

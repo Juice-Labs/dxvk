@@ -191,7 +191,8 @@ namespace dxvk {
      */
     DxvkBufferSliceHandle DiscardSlice(UINT Subresource, VkDxvkTypeJUICE type) {
       if (Subresource < m_buffers.size()) {
-        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice(type);
+        auto info = GetJuiceInfo();
+        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice(&info, type);
         m_buffers[Subresource].slice = slice;
         return slice;
       } else {
@@ -349,6 +350,8 @@ namespace dxvk {
     static VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage);
     
+    VkD3D11ImageCreateInfoJUICE GetJuiceInfo() const;
+
   };
 
 

@@ -1446,7 +1446,7 @@ namespace dxvk {
       return;
 
     if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
-      this->invalidateBuffer(buffer, buffer->allocSlice(type));
+      this->invalidateBuffer(buffer, buffer->allocSlice(nullptr, type));
   }
 
 
@@ -2177,7 +2177,7 @@ namespace dxvk {
       // As an optimization, allocate a free slice and perform
       // the copy in the initialization command buffer instead
       // interrupting the render pass and stalling the pipeline.
-      bufferSlice = buffer->allocSlice(VK_DXVK_TYPE_SLICE_UPDATE_SHADOW_BUFFER_JUICE);
+      bufferSlice = buffer->allocSlice(nullptr, VK_DXVK_TYPE_SLICE_UPDATE_SHADOW_BUFFER_JUICE);
       cmdBuffer   = DxvkCmdBuffer::InitBuffer;
 
       this->invalidateBuffer(buffer, bufferSlice);

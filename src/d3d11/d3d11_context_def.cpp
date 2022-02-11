@@ -298,7 +298,7 @@ namespace dxvk {
         cDstBuffer = pBuffer->GetBuffer(),
         cDataSlice = dataSlice
       ] (DxvkContext* ctx) {
-        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice(VK_DXVK_TYPE_SLICE_MAP_BUFFER_JUICE);
+        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice(nullptr, VK_DXVK_TYPE_SLICE_MAP_BUFFER_JUICE);
         std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
         ctx->invalidateBuffer(cDstBuffer, slice);
       });
