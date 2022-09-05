@@ -1,8 +1,23 @@
 #include "vulkan_loader.h"
 
+#include <mutex>
+
 namespace dxvk::vk {
 
-  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
+  static PFN_vkVoidFunction GetInstanceProcAddr(VkInstance instance, const char* name) {
+    static PFN_vkGetInstanceProcAddr GetInstanceProcAddr = nullptr;
+
+    static std::once_flag loaded;
+    std::call_once(loaded, []() {
+      HMODULE mod = LoadLibraryA("JuiceVlk.dll");
+      GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetProcAddress(mod, "vkGetInstanceProcAddr");
+    });
+
+    if(GetInstanceProcAddr != nullptr)
+      return GetInstanceProcAddr(instance, name);
+
+    return nullptr;
+  }
 
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
     return dxvk::vk::GetInstanceProcAddr(nullptr, name);
