@@ -36,6 +36,12 @@ if get_option('debug') and target_machine.system() == 'windows'
   ]
 endif
 
+if cpu_family == 'x86' and target_machine.system() == 'windows'
+  link_args += [
+    '/SAFESEH:NO',
+  ]
+endif
+
 if get_option('build_id')
   link_args += [
     '-Wl,--build-id',
@@ -107,10 +113,14 @@ if dxvk_is_msvc
   )
 else
   res_ext = '.o'
+  res_args = [ '-i', '@INPUT@', '-o', '@OUTPUT@' ]
+  if cpu_family == 'x86'
+    res_args += [ '-F', 'pe-i386' ]
+  endif
   wrc = find_program('windres')
   wrc_generator = generator(wrc,
     output    : [ '@BASENAME@' + res_ext ],
-    arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ],
+    arguments : res_args,
   )
 endif
 
