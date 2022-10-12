@@ -1565,6 +1565,7 @@ namespace dxvk {
       dst.type.ccount /= 2;
     
     const uint32_t typeId = getVectorTypeId(dst.type);
+    bool precise = false;
     
     switch (ins.op) {
       /////////////////////
@@ -1583,6 +1584,7 @@ namespace dxvk {
         break;
         
       case DxbcOpcode::Div:
+        precise = true;
       case DxbcOpcode::DDiv:
         dst.id = m_module.opFDiv(typeId,
           src.at(0).id, src.at(1).id);
@@ -1622,6 +1624,7 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Mul:
+        precise = true;
       case DxbcOpcode::DMul:
         dst.id = m_module.opFMul(typeId,
           src.at(0).id, src.at(1).id);
@@ -1775,9 +1778,9 @@ namespace dxvk {
         return;
     }
     
-    if (ins.controls.precise() || m_precise)
+    if (ins.controls.precise() || m_precise || precise)
       m_module.decorate(dst.id, spv::DecorationNoContraction);
-    
+
     // Store computed value
     dst = emitDstOperandModifiers(dst, ins.modifiers);
     emitRegisterStore(ins.dst[0], dst);
