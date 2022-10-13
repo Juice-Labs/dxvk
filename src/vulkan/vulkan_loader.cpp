@@ -1,6 +1,6 @@
 #include "vulkan_loader.h"
-
 #include <mutex>
+#include <assert.h>
 
 namespace dxvk::vk {
 
@@ -9,8 +9,10 @@ namespace dxvk::vk {
 
     static std::once_flag loaded;
     std::call_once(loaded, []() {
-      HMODULE mod = LoadLibraryA("JuiceVlk.dll");
-      GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetProcAddress(mod, "vkGetInstanceProcAddr");
+      HMODULE juiceVlk = LoadLibraryExA("JuiceVlk.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+      assert(juiceVlk);
+      GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetProcAddress(juiceVlk, "vkGetInstanceProcAddr");
+      assert(GetInstanceProcAddr);
     });
 
     if(GetInstanceProcAddr != nullptr)
