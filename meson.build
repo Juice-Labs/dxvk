@@ -82,8 +82,12 @@ dxvk_extradep = [ ]
 lib_d3d9    = cpp.find_library('d3d9')
 lib_d3d11   = cpp.find_library('d3d11')
 lib_dxgi    = cpp.find_library('dxgi')
-lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
 
+if dxvk_is_msvc or host_machine.system() == 'windows'
+  lib_d3dcompiler_43 = cpp.find_library('d3dcompiler')
+else
+  lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+endif
 lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47', required : false)
 if not lib_d3dcompiler_47.found()
   lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
@@ -104,7 +108,7 @@ glsl_generator = generator(glsl_compiler,
   arguments : glsl_args,
 )
 
-if dxvk_is_msvc
+if dxvk_is_msvc or host_machine.system() == 'windows'
   res_ext = '.res'
   wrc = find_program('rc')
   wrc_generator = generator(wrc,
