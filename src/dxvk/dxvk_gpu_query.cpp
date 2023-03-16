@@ -18,11 +18,8 @@ namespace dxvk {
   
   
   DxvkGpuQuery::~DxvkGpuQuery() {
-    if (m_handle.queryPool)
-      m_handle.allocator->freeQuery(m_handle);
-    
-    for (DxvkGpuQueryHandle handle : m_handles)
-      handle.allocator->freeQuery(handle);
+    for (size_t i = 0; i < m_handles.size(); i++)
+      m_handles[i].allocator->freeQuery(m_handles[i]);
   }
 
 
@@ -31,80 +28,73 @@ namespace dxvk {
   }
 
 
-  DxvkGpuQueryStatus DxvkGpuQuery::getData(DxvkQueryData& queryData) const {
+  DxvkGpuQueryStatus DxvkGpuQuery::getData(DxvkQueryData& queryData) {
     queryData = DxvkQueryData();
 
-    if (!m_ended)
+    // Callers must ensure that no begin call is pending when
+    // calling this. Given that, once the query is ended, we
+    // know that no other thread will access query state.
+    if (!m_ended.load(std::memory_order_acquire))
       return DxvkGpuQueryStatus::Invalid;
-    
-    // Empty begin/end pair
-    if (!m_handle.queryPool)
-      return DxvkGpuQueryStatus::Available;
-    
-    // Get query data from all associated handles
-    DxvkGpuQueryStatus status = getDataForHandle(queryData, m_handle);
 
-    for (size_t i = 0; i < m_handles.size()
-        && status == DxvkGpuQueryStatus::Available; i++)
-      status = getDataForHandle(queryData, m_handles[i]);
+    // Accumulate query data from all available queries
+    DxvkGpuQueryStatus status = this->accumulateQueryData();
     
     // Treat non-precise occlusion queries as available
     // if we already know the result will be non-zero
     if ((status == DxvkGpuQueryStatus::Pending)
      && (m_type == VK_QUERY_TYPE_OCCLUSION)
      && !(m_flags & VK_QUERY_CONTROL_PRECISE_BIT)
-     && (queryData.occlusion.samplesPassed))
+     && (m_queryData.occlusion.samplesPassed))
       status = DxvkGpuQueryStatus::Available;
-    
+
+    // Write back accumulated query data if the result is useful
+    if (status == DxvkGpuQueryStatus::Available)
+      queryData = m_queryData;
+
     return status;
   }
 
 
   void DxvkGpuQuery::begin(const Rc<DxvkCommandList>& cmd) {
-    m_ended = false;
+    // Not useful to enforce a memory order here since
+    // only the false->true transition is defined.
+    m_ended.store(false, std::memory_order_relaxed);
 
-    cmd->trackGpuQuery(m_handle);
-    m_handle = DxvkGpuQueryHandle();
+    // Ideally we should have no queries left at this point,
+    // if we do, lifetime-track them with the command list.
+    for (size_t i = 0; i < m_handles.size(); i++)
+      cmd->trackGpuQuery(m_handles[i]);
 
-    for (const auto& handle : m_handles)
-      cmd->trackGpuQuery(handle);
     m_handles.clear();
+
+    // Reset accumulated query data
+    m_queryData = DxvkQueryData();
   }
 
   
   void DxvkGpuQuery::end() {
-    m_ended = true;
+    // Ensure that all prior writes are made available
+    m_ended.store(true, std::memory_order_release);
   }
 
 
   void DxvkGpuQuery::addQueryHandle(const DxvkGpuQueryHandle& handle) {
-    if (m_handle.queryPool)
-      m_handles.push_back(m_handle);
-    
-    m_handle = handle;
+    // Already accumulate available queries here in case
+    // we already allocated a large number of queries
+    if (m_handles.size() >= m_handles.MinCapacity)
+      this->accumulateQueryData();
+
+    m_handles.push_back(handle);
   }
 
 
-  DxvkGpuQueryStatus DxvkGpuQuery::getDataForHandle(
-          DxvkQueryData&      queryData,
-    const DxvkGpuQueryHandle& handle) const {
-    DxvkQueryData tmpData;
+  DxvkGpuQueryStatus DxvkGpuQuery::accumulateQueryDataForHandle(
+    const DxvkGpuQueryHandle& handle) {
+    DxvkQueryData tmpData = { };
 
-    // Wait for the query to be reset first
-    VkResult result;
-    
-    if (handle.resetEvent) {
-      result = m_vkd->vkGetEventStatus(
-        m_vkd->device(), handle.resetEvent);
-    
-      if (result == VK_EVENT_RESET)
-        return DxvkGpuQueryStatus::Pending;
-      else if (result != VK_EVENT_SET)
-        return DxvkGpuQueryStatus::Failed;
-    }
-    
     // Try to copy query data to temporary structure
-    result = m_vkd->vkGetQueryPoolResults(m_vkd->device(),
+    VkResult result = m_vkd->vkGetQueryPoolResults(m_vkd->device(),
       handle.queryPool, handle.queryId, 1,
       sizeof(DxvkQueryData), &tmpData,
       sizeof(DxvkQueryData), VK_QUERY_RESULT_64_BIT);
@@ -117,30 +107,30 @@ namespace dxvk {
     // Add numbers to the destination structure
     switch (m_type) {
       case VK_QUERY_TYPE_OCCLUSION:
-        queryData.occlusion.samplesPassed += tmpData.occlusion.samplesPassed;
+        m_queryData.occlusion.samplesPassed += tmpData.occlusion.samplesPassed;
         break;
       
       case VK_QUERY_TYPE_TIMESTAMP:
-        queryData.timestamp.time = tmpData.timestamp.time;
+        m_queryData.timestamp.time = tmpData.timestamp.time;
         break;
       
       case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-        queryData.statistic.iaVertices       += tmpData.statistic.iaVertices;
-        queryData.statistic.iaPrimitives     += tmpData.statistic.iaPrimitives;
-        queryData.statistic.vsInvocations    += tmpData.statistic.vsInvocations;
-        queryData.statistic.gsInvocations    += tmpData.statistic.gsInvocations;
-        queryData.statistic.gsPrimitives     += tmpData.statistic.gsPrimitives;
-        queryData.statistic.clipInvocations  += tmpData.statistic.clipInvocations;
-        queryData.statistic.clipPrimitives   += tmpData.statistic.clipPrimitives;
-        queryData.statistic.fsInvocations    += tmpData.statistic.fsInvocations;
-        queryData.statistic.tcsPatches       += tmpData.statistic.tcsPatches;
-        queryData.statistic.tesInvocations   += tmpData.statistic.tesInvocations;
-        queryData.statistic.csInvocations    += tmpData.statistic.csInvocations;
+        m_queryData.statistic.iaVertices       += tmpData.statistic.iaVertices;
+        m_queryData.statistic.iaPrimitives     += tmpData.statistic.iaPrimitives;
+        m_queryData.statistic.vsInvocations    += tmpData.statistic.vsInvocations;
+        m_queryData.statistic.gsInvocations    += tmpData.statistic.gsInvocations;
+        m_queryData.statistic.gsPrimitives     += tmpData.statistic.gsPrimitives;
+        m_queryData.statistic.clipInvocations  += tmpData.statistic.clipInvocations;
+        m_queryData.statistic.clipPrimitives   += tmpData.statistic.clipPrimitives;
+        m_queryData.statistic.fsInvocations    += tmpData.statistic.fsInvocations;
+        m_queryData.statistic.tcsPatches       += tmpData.statistic.tcsPatches;
+        m_queryData.statistic.tesInvocations   += tmpData.statistic.tesInvocations;
+        m_queryData.statistic.csInvocations    += tmpData.statistic.csInvocations;
         break;
       
       case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-        queryData.xfbStream.primitivesWritten += tmpData.xfbStream.primitivesWritten;
-        queryData.xfbStream.primitivesNeeded  += tmpData.xfbStream.primitivesNeeded;
+        m_queryData.xfbStream.primitivesWritten += tmpData.xfbStream.primitivesWritten;
+        m_queryData.xfbStream.primitivesNeeded  += tmpData.xfbStream.primitivesNeeded;
         break;
       
       default:
@@ -149,6 +139,37 @@ namespace dxvk {
     }
     
     return DxvkGpuQueryStatus::Available;
+  }
+
+
+  DxvkGpuQueryStatus DxvkGpuQuery::accumulateQueryData() {
+    DxvkGpuQueryStatus status = DxvkGpuQueryStatus::Available;
+
+    // Process available queries and return them to the
+    // allocator if possible. This may help reduce the
+    // number of Vulkan queries in flight.
+    size_t queriesAvailable = 0;
+
+    while (queriesAvailable < m_handles.size()) {
+      status = this->accumulateQueryDataForHandle(m_handles[queriesAvailable]);
+
+      if (status != DxvkGpuQueryStatus::Available)
+        break;
+
+      queriesAvailable += 1;
+    }
+
+    if (queriesAvailable) {
+      for (size_t i = 0; i < queriesAvailable; i++)
+        m_handles[i].allocator->freeQuery(m_handles[i]);
+
+      for (size_t i = queriesAvailable; i < m_handles.size(); i++)
+        m_handles[i - queriesAvailable] = m_handles[i];
+
+      m_handles.resize(m_handles.size() - queriesAvailable);
+    }
+
+    return status;
   }
   
   
@@ -167,11 +188,6 @@ namespace dxvk {
 
   
   DxvkGpuQueryAllocator::~DxvkGpuQueryAllocator() {
-    for (DxvkGpuQueryHandle handle : m_handles) {
-      m_vkd->vkDestroyEvent(m_vkd->device(),
-        handle.resetEvent, nullptr);
-    }
-
     for (VkQueryPool pool : m_pools) {
       m_vkd->vkDestroyQueryPool(
         m_vkd->device(), pool, nullptr);
@@ -201,13 +217,9 @@ namespace dxvk {
 
   
   void DxvkGpuQueryAllocator::createQueryPool() {
-    VkQueryPoolCreateInfo info;
-    info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-    info.pNext      = nullptr;
-    info.flags      = 0;
+    VkQueryPoolCreateInfo info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
     info.queryType  = m_queryType;
     info.queryCount = m_queryPoolSize;
-    info.pipelineStatistics = 0;
 
     if (m_queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
       info.pipelineStatistics
@@ -233,22 +245,8 @@ namespace dxvk {
 
     m_pools.push_back(queryPool);
 
-    VkEventCreateInfo eventInfo;
-    eventInfo.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
-    eventInfo.pNext = nullptr;
-    eventInfo.flags = 0;
-    
-    for (uint32_t i = 0; i < m_queryPoolSize; i++) {
-      VkEvent event = VK_NULL_HANDLE;
-
-      if (!m_device->features().extHostQueryReset.hostQueryReset
-       && m_vkd->vkCreateEvent(m_vkd->device(), &eventInfo, nullptr, &event) != VK_SUCCESS) {
-        Logger::err("DXVK: Failed to create query reset event");
-        return;
-      }
-
-      m_handles.push_back({ this, event, queryPool, i });
-    }
+    for (uint32_t i = 0; i < m_queryPoolSize; i++)
+      m_handles.push_back({ this, queryPool, i });
   }
 
 
@@ -337,10 +335,9 @@ namespace dxvk {
     query->addQueryHandle(handle);
     query->end();
 
-    cmd->cmdResetQuery(
+    cmd->resetQuery(
       handle.queryPool,
-      handle.queryId,
-      handle.resetEvent);
+      handle.queryId);
     
     cmd->cmdWriteTimestamp(
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -380,10 +377,9 @@ namespace dxvk {
     const Rc<DxvkGpuQuery>&     query) {
     DxvkGpuQueryHandle handle = m_pool->allocQuery(query->type());
     
-    cmd->cmdResetQuery(
+    cmd->resetQuery(
       handle.queryPool,
-      handle.queryId,
-      handle.resetEvent);
+      handle.queryId);
     
     if (query->isIndexed()) {
       cmd->cmdBeginQueryIndexed(

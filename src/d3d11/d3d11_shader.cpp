@@ -20,24 +20,29 @@ namespace dxvk {
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
     
-    DxbcModule module(reader);
-    
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
     
     if (dumpPath.size() != 0) {
-      reader.store(std::ofstream(str::tows(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(),
+      reader.store(std::ofstream(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc));
     }
-    
+
+    // Error out if the shader is invalid
+    DxbcModule module(reader);
+    auto programInfo = module.programInfo();
+
+    if (!programInfo)
+      throw DxvkError("Invalid shader binary.");
+
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
     bool passthroughShader = pDxbcModuleInfo->xfb != nullptr
-      && (module.programInfo().type() == DxbcProgramType::VertexShader
-       || module.programInfo().type() == DxbcProgramType::DomainShader);
+      && (programInfo->type() == DxbcProgramType::VertexShader
+       || programInfo->type() == DxbcProgramType::DomainShader);
 
-    if (module.programInfo().shaderStage() != pShaderKey->type() && !passthroughShader)
+    if (programInfo->shaderStage() != pShaderKey->type() && !passthroughShader)
       throw DxvkError("Mismatching shader type.");
 
     m_shader = passthroughShader
@@ -47,23 +52,25 @@ namespace dxvk {
     
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
-        str::tows(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
+        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc);
       
       m_shader->dump(dumpStream);
     }
     
     // Create shader constant buffer if necessary
-    if (m_shader->shaderConstants().data() != nullptr) {
+    const DxvkShaderCreateInfo& shaderInfo = m_shader->info();
+
+    if (shaderInfo.uniformSize) {
       VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
       dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
       dxvkBufferCreateInfo.pNext = nullptr;
       dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_SHADER_CONSTANTS_BUFFER_JUICE;
 
       DxvkBufferCreateInfo info;
-      info.size   = m_shader->shaderConstants().sizeInBytes();
+      info.size   = shaderInfo.uniformSize;
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages = util::pipelineStages(m_shader->stage());
+      info.stages = util::pipelineStages(shaderInfo.stage);
       info.access = VK_ACCESS_UNIFORM_READ_BIT;
       
       VkMemoryPropertyFlags memFlags
@@ -72,10 +79,7 @@ namespace dxvk {
         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
       
       m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, &dxvkBufferCreateInfo, memFlags);
-
-      std::memcpy(m_buffer->mapPtr(0),
-        m_shader->shaderConstants().data(),
-        m_shader->shaderConstants().sizeInBytes());
+      std::memcpy(m_buffer->mapPtr(0), shaderInfo.uniformData, shaderInfo.uniformSize);
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
@@ -131,4 +135,60 @@ namespace dxvk {
     return S_OK;
   }
   
+
+  D3D11ExtShader::D3D11ExtShader(
+          ID3D11DeviceChild*      pParent,
+          D3D11CommonShader*      pShader)
+  : m_parent(pParent), m_shader(pShader) {
+
+  }
+
+
+  D3D11ExtShader::~D3D11ExtShader() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11ExtShader::AddRef() {
+    return m_parent->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11ExtShader::Release() {
+    return m_parent->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ExtShader::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_parent->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ExtShader::GetSpirvCode(
+          SIZE_T*                 pCodeSize,
+          void*                   pCode) {
+    auto shader = m_shader->GetShader();
+    auto code = shader->getRawCode();
+
+    HRESULT hr = S_OK;
+
+    if (pCode) {
+      size_t size = code.size();
+
+      if (size > *pCodeSize) {
+        size = *pCodeSize;
+        hr = S_FALSE;
+      }
+
+      std::memcpy(pCode, code.data(), size);
+      *pCodeSize = size;
+      return hr;
+    } else {
+      *pCodeSize = code.size();
+      return hr;
+    }
+  }
+
 }

@@ -1,6 +1,13 @@
+#include <tuple>
+
 #include "vulkan_loader.h"
 #include <mutex>
 #include <assert.h>
+
+#include "../util/log/log.h"
+
+#include "../util/util_string.h"
+#include "../util/util_win32_compat.h"
 
 namespace dxvk::vk {
 

@@ -24,7 +24,7 @@ namespace dxvk {
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect  = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     
@@ -141,8 +141,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11RenderTargetView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11RenderTargetView), riid)) {
+      Logger::warn("D3D11RenderTargetView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   

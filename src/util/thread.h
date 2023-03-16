@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <thread>
 
 #include "util_error.h"
 
@@ -18,13 +19,11 @@ namespace dxvk {
    * \brief Thread priority
    */
   enum class ThreadPriority : int32_t {
-    Lowest      = THREAD_PRIORITY_LOWEST,
-    Low         = THREAD_PRIORITY_BELOW_NORMAL,
-    Normal      = THREAD_PRIORITY_NORMAL,
-    High        = THREAD_PRIORITY_ABOVE_NORMAL,
-    Highest     = THREAD_PRIORITY_HIGHEST,
+    Normal,
+    Lowest,
   };
 
+#ifdef _WIN32
   /**
    * \brief Thread helper class
    * 
@@ -72,7 +71,13 @@ namespace dxvk {
     }
 
     void set_priority(ThreadPriority priority) {
-      ::SetThreadPriority(m_handle, int32_t(priority));
+      int32_t value;
+      switch (priority) {
+        default:
+        case ThreadPriority::Normal: value = THREAD_PRIORITY_NORMAL; break;
+        case ThreadPriority::Lowest: value = THREAD_PRIORITY_LOWEST; break;
+      }
+      ::SetThreadPriority(m_handle, int32_t(value));
     }
 
   private:
@@ -147,6 +152,12 @@ namespace dxvk {
     inline void yield() {
       SwitchToThread();
     }
+
+    inline uint32_t get_id() {
+      return uint32_t(GetCurrentThreadId());
+    }
+
+    bool isInModuleDetachment();
   }
 
 
@@ -322,5 +333,39 @@ namespace dxvk {
     CONDITION_VARIABLE m_cond;
 
   };
+
+#else
+  class thread : public std::thread {
+  public:
+    using std::thread::thread;
+
+    void set_priority(ThreadPriority priority) {
+      ::sched_param param = {};
+      int32_t policy;
+      switch (priority) {
+        default:
+        case ThreadPriority::Normal: policy = SCHED_OTHER; break;
+        case ThreadPriority::Lowest: policy = SCHED_IDLE;  break;
+      }
+      ::pthread_setschedparam(this->native_handle(), policy, &param);
+    }
+  };
+
+  using mutex              = std::mutex;
+  using recursive_mutex    = std::recursive_mutex;
+  using condition_variable = std::condition_variable;
+
+  namespace this_thread {
+    inline void yield() {
+      std::this_thread::yield();
+    }
+
+    uint32_t get_id();
+
+    inline bool isInModuleDetachment() {
+      return false;
+    }
+  }
+#endif
 
 }

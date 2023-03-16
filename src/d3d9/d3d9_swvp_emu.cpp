@@ -130,17 +130,16 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
-      DxvkResourceSlot bufferRes;
-      bufferRes.slot   = bufferSlot;
-      bufferRes.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      bufferRes.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      bufferRes.access = VK_ACCESS_SHADER_WRITE_BIT;
-      m_resourceSlots.push_back(bufferRes);
+      m_bufferBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      m_bufferBinding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+      m_bufferBinding.resourceBinding = bufferSlot;
+      m_bufferBinding.stage           = VK_SHADER_STAGE_GEOMETRY_BIT;
+      m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
+      m_bufferBinding.uboSet          = VK_TRUE;
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
       m_module.decorateBuiltIn(primitiveIdPtr, spv::BuiltInPrimitiveId);
-      m_entryPointInterfaces.push_back(primitiveIdPtr);
 
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
 
@@ -168,14 +167,12 @@ namespace dxvk {
           uint32_t slotIdx      = RegisterLinkerSlot(semantic);
 
           m_module.decorateLocation(elementPtr, slotIdx);
-          m_interfaceSlots.inputSlots |= 1u << slotIdx;
+          m_inputMask |= 1u << slotIdx;
         }
 
         uint32_t zero = m_module.constu32(0);
         elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
         elementVar = m_module.opLoad(vec4_t, elementVar);
-
-        m_entryPointInterfaces.push_back(elementPtr);
 
         // The offset of this element from the beginning of any given vertex
         uint32_t perVertexElementOffset = m_module.constu32(element.Offset / sizeof(uint32_t));
@@ -278,32 +275,25 @@ namespace dxvk {
       m_module.functionEnd();
 
       m_module.addEntryPoint(m_entryPointId,
-        spv::ExecutionModelGeometry, "main",
-        m_entryPointInterfaces.size(),
-        m_entryPointInterfaces.data());
+        spv::ExecutionModelGeometry, "main");
       m_module.setDebugName(m_entryPointId, "main");
 
-      DxvkShaderConstData constData = { };
+      DxvkShaderCreateInfo info;
+      info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+      info.bindingCount = 1;
+      info.bindings = &m_bufferBinding;
+      info.inputMask = m_inputMask;
 
-      return new DxvkShader(
-        VK_SHADER_STAGE_GEOMETRY_BIT,
-        m_resourceSlots.size(),
-        m_resourceSlots.data(),
-        m_interfaceSlots,
-        m_module.compile(),
-        DxvkShaderOptions(),
-        std::move(constData));
+      return new DxvkShader(info, m_module.compile());
     }
 
   private:
 
     SpirvModule m_module;
 
-    std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
-
-    std::vector<DxvkResourceSlot> m_resourceSlots;
-    DxvkInterfaceSlots m_interfaceSlots;
+    uint32_t              m_inputMask = 0u;
+    DxvkBindingInfo       m_bufferBinding;
 
   };
 
@@ -333,7 +323,7 @@ namespace dxvk {
     shader->setShaderKey(key);
     pDevice->GetDXVKDevice()->registerShader(shader);
 
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
 
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(

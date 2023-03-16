@@ -85,6 +85,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyInstance);
     VULKAN_FN(vkEnumerateDeviceExtensionProperties);
     VULKAN_FN(vkEnumeratePhysicalDevices);
+    VULKAN_FN(vkGetPhysicalDeviceExternalSemaphoreProperties);
     VULKAN_FN(vkGetPhysicalDeviceFeatures);
     VULKAN_FN(vkGetPhysicalDeviceFeatures2);
     VULKAN_FN(vkGetPhysicalDeviceFormatProperties);
@@ -165,6 +166,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyDevice);
     VULKAN_FN(vkGetDeviceQueue);
     VULKAN_FN(vkQueueSubmit);
+    VULKAN_FN(vkQueueSubmit2);
     VULKAN_FN(vkQueueWaitIdle);
     VULKAN_FN(vkDeviceWaitIdle);
     VULKAN_FN(vkAllocateMemory);
@@ -231,6 +233,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCreateFramebuffer);
     VULKAN_FN(vkDestroyFramebuffer);
     VULKAN_FN(vkCreateRenderPass);
+    VULKAN_FN(vkCreateRenderPass2);
     VULKAN_FN(vkDestroyRenderPass);
     VULKAN_FN(vkGetRenderAreaGranularity);
     VULKAN_FN(vkCreateCommandPool);
@@ -244,6 +247,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkCreateDescriptorUpdateTemplate);
     VULKAN_FN(vkDestroyDescriptorUpdateTemplate);
     VULKAN_FN(vkUpdateDescriptorSetWithTemplate);
+    VULKAN_FN(vkResetQueryPool);
+    VULKAN_FN(vkGetBufferDeviceAddress);
+    VULKAN_FN(vkGetSemaphoreCounterValue);
+    VULKAN_FN(vkSignalSemaphore);
+    VULKAN_FN(vkWaitSemaphores);
     VULKAN_FN(vkCmdBindPipeline);
     VULKAN_FN(vkCmdSetViewport);
     VULKAN_FN(vkCmdSetScissor);
@@ -254,53 +262,74 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetStencilCompareMask);
     VULKAN_FN(vkCmdSetStencilWriteMask);
     VULKAN_FN(vkCmdSetStencilReference);
+    VULKAN_FN(vkCmdBindVertexBuffers2);
+    VULKAN_FN(vkCmdSetCullMode);
+    VULKAN_FN(vkCmdSetDepthBoundsTestEnable);
+    VULKAN_FN(vkCmdSetDepthCompareOp);
+    VULKAN_FN(vkCmdSetDepthTestEnable);
+    VULKAN_FN(vkCmdSetDepthWriteEnable);
+    VULKAN_FN(vkCmdSetFrontFace);
+    VULKAN_FN(vkCmdSetPrimitiveTopology);
+    VULKAN_FN(vkCmdSetScissorWithCount);
+    VULKAN_FN(vkCmdSetStencilOp);
+    VULKAN_FN(vkCmdSetStencilTestEnable);
+    VULKAN_FN(vkCmdSetViewportWithCount);
+    VULKAN_FN(vkCmdSetRasterizerDiscardEnable);
+    VULKAN_FN(vkCmdSetDepthBiasEnable);
+    VULKAN_FN(vkCmdSetPrimitiveRestartEnable);
     VULKAN_FN(vkCmdBindDescriptorSets);
     VULKAN_FN(vkCmdBindIndexBuffer);
     VULKAN_FN(vkCmdBindVertexBuffers);
     VULKAN_FN(vkCmdDraw);
     VULKAN_FN(vkCmdDrawIndexed);
     VULKAN_FN(vkCmdDrawIndirect);
+    VULKAN_FN(vkCmdDrawIndirectCount);
     VULKAN_FN(vkCmdDrawIndexedIndirect);
+    VULKAN_FN(vkCmdDrawIndexedIndirectCount);
     VULKAN_FN(vkCmdDispatch);
     VULKAN_FN(vkCmdDispatchIndirect);
     VULKAN_FN(vkCmdCopyBuffer);
+    VULKAN_FN(vkCmdCopyBuffer2);
     VULKAN_FN(vkCmdCopyImage);
+    VULKAN_FN(vkCmdCopyImage2);
     VULKAN_FN(vkCmdBlitImage);
+    VULKAN_FN(vkCmdBlitImage2);
     VULKAN_FN(vkCmdCopyBufferToImage);
+    VULKAN_FN(vkCmdCopyBufferToImage2);
     VULKAN_FN(vkCmdCopyImageToBuffer);
+    VULKAN_FN(vkCmdCopyImageToBuffer2);
     VULKAN_FN(vkCmdUpdateBuffer);
     VULKAN_FN(vkCmdFillBuffer);
     VULKAN_FN(vkCmdClearColorImage);
     VULKAN_FN(vkCmdClearDepthStencilImage);
     VULKAN_FN(vkCmdClearAttachments);
     VULKAN_FN(vkCmdResolveImage);
+    VULKAN_FN(vkCmdResolveImage2);
     VULKAN_FN(vkCmdSetEvent);
+    VULKAN_FN(vkCmdSetEvent2);
     VULKAN_FN(vkCmdResetEvent);
+    VULKAN_FN(vkCmdResetEvent2);
     VULKAN_FN(vkCmdWaitEvents);
+    VULKAN_FN(vkCmdWaitEvents2);
     VULKAN_FN(vkCmdPipelineBarrier);
+    VULKAN_FN(vkCmdPipelineBarrier2);
     VULKAN_FN(vkCmdBeginQuery);
     VULKAN_FN(vkCmdEndQuery);
     VULKAN_FN(vkCmdResetQueryPool);
     VULKAN_FN(vkCmdWriteTimestamp);
+    VULKAN_FN(vkCmdWriteTimestamp2);
     VULKAN_FN(vkCmdCopyQueryPoolResults);
     VULKAN_FN(vkCmdPushConstants);
     VULKAN_FN(vkCmdBeginRenderPass);
+    VULKAN_FN(vkCmdBeginRenderPass2);
     VULKAN_FN(vkCmdNextSubpass);
+    VULKAN_FN(vkCmdNextSubpass2);
     VULKAN_FN(vkCmdEndRenderPass);
+    VULKAN_FN(vkCmdEndRenderPass2);
+    VULKAN_FN(vkCmdBeginRendering);
+    VULKAN_FN(vkCmdEndRendering);
     VULKAN_FN(vkCmdExecuteCommands);
 
-    #ifdef VK_KHR_create_renderpass2
-    VULKAN_FN(vkCreateRenderPass2KHR);
-    VULKAN_FN(vkCmdBeginRenderPass2KHR);
-    VULKAN_FN(vkCmdNextSubpass2KHR);
-    VULKAN_FN(vkCmdEndRenderPass2KHR);
-    #endif
-    
-    #ifdef VK_KHR_draw_indirect_count
-    VULKAN_FN(vkCmdDrawIndirectCountKHR);
-    VULKAN_FN(vkCmdDrawIndexedIndirectCountKHR);
-    #endif
-    
     #ifdef VK_KHR_swapchain
     VULKAN_FN(vkCreateSwapchainKHR);
     VULKAN_FN(vkDestroySwapchainKHR);
@@ -314,19 +343,30 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
     #endif
 
-    #ifdef VK_EXT_extended_dynamic_state
-    VULKAN_FN(vkCmdBindVertexBuffers2EXT);
-    VULKAN_FN(vkCmdSetCullModeEXT);
-    VULKAN_FN(vkCmdSetDepthBoundsTestEnableEXT);
-    VULKAN_FN(vkCmdSetDepthCompareOpEXT);
-    VULKAN_FN(vkCmdSetDepthTestEnableEXT);
-    VULKAN_FN(vkCmdSetDepthWriteEnableEXT);
-    VULKAN_FN(vkCmdSetFrontFaceEXT);
-    VULKAN_FN(vkCmdSetPrimitiveTopologyEXT);
-    VULKAN_FN(vkCmdSetScissorWithCountEXT);
-    VULKAN_FN(vkCmdSetStencilOpEXT);
-    VULKAN_FN(vkCmdSetStencilTestEnableEXT);
-    VULKAN_FN(vkCmdSetViewportWithCountEXT);
+    #ifdef VK_EXT_debug_utils
+    VULKAN_FN(vkQueueBeginDebugUtilsLabelEXT);
+    VULKAN_FN(vkQueueEndDebugUtilsLabelEXT);
+    VULKAN_FN(vkQueueInsertDebugUtilsLabelEXT);
+    VULKAN_FN(vkSetDebugUtilsObjectNameEXT);
+    VULKAN_FN(vkSetDebugUtilsObjectTagEXT);
+    #endif
+
+    #ifdef VK_EXT_extended_dynamic_state3
+    VULKAN_FN(vkCmdSetTessellationDomainOriginEXT);
+    VULKAN_FN(vkCmdSetDepthClampEnableEXT);
+    VULKAN_FN(vkCmdSetPolygonModeEXT);
+    VULKAN_FN(vkCmdSetRasterizationSamplesEXT);
+    VULKAN_FN(vkCmdSetSampleMaskEXT);
+    VULKAN_FN(vkCmdSetAlphaToCoverageEnableEXT);
+    VULKAN_FN(vkCmdSetAlphaToOneEnableEXT);
+    VULKAN_FN(vkCmdSetLogicOpEnableEXT);
+    VULKAN_FN(vkCmdSetColorBlendEnableEXT);
+    VULKAN_FN(vkCmdSetColorBlendEquationEXT);
+    VULKAN_FN(vkCmdSetColorWriteMaskEXT);
+    VULKAN_FN(vkCmdSetRasterizationStreamEXT);
+    VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
+    VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
+    VULKAN_FN(vkCmdSetDepthClipEnableEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
@@ -335,8 +375,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
     #endif
 
-    #ifdef VK_EXT_host_query_reset
-    VULKAN_FN(vkResetQueryPoolEXT);
+    #ifdef VK_EXT_hdr_metadata
+    VULKAN_FN(vkSetHdrMetadataEXT);
+    #endif
+
+    #ifdef VK_EXT_shader_module_identifier
+    VULKAN_FN(vkGetShaderModuleCreateInfoIdentifierEXT);
+    VULKAN_FN(vkGetShaderModuleIdentifierEXT);
     #endif
 
     #ifdef VK_EXT_transform_feedback
@@ -361,21 +406,14 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdCuLaunchKernelNVX);
     #endif
 
-    #ifdef VK_KHR_buffer_device_address
-    VULKAN_FN(vkGetBufferDeviceAddressKHR);
-    #endif
-
     #ifdef VK_KHR_external_memory_win32
     VULKAN_FN(vkGetMemoryWin32HandleKHR);
     VULKAN_FN(vkGetMemoryWin32HandlePropertiesKHR);
     #endif
 
-    #ifdef VK_KHR_copy_commands2
-    VULKAN_FN(vkCmdCopyBuffer2KHR);
-    VULKAN_FN(vkCmdCopyImage2KHR);
-    VULKAN_FN(vkCmdCopyBufferToImage2KHR);
-    VULKAN_FN(vkCmdCopyImageToBuffer2KHR);
-    VULKAN_FN(vkCmdBlitImage2KHR);
+    #ifdef VK_KHR_external_semaphore_win32
+    VULKAN_FN(vkGetSemaphoreWin32HandleKHR);
+    VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
     #endif
   };
   

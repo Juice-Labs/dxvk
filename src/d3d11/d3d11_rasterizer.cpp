@@ -37,6 +37,7 @@ namespace dxvk {
     m_state.depthClipEnable   = desc.DepthClipEnable;
     m_state.conservativeMode  = DecodeConservativeRasterizationMode(desc.ConservativeRaster);
     m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
+    m_state.flatShading       = VK_FALSE;
 
     m_depthBias.depthBiasConstant = float(desc.DepthBias);
     m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
@@ -73,8 +74,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11RasterizerState), riid)) {
+      Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -113,7 +117,7 @@ namespace dxvk {
   }
 
   
-  void D3D11RasterizerState::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11RasterizerState::BindToContext(DxvkContext* ctx) {
     ctx->setRasterizerState(m_state);
     
     if (m_state.depthBiasEnable)

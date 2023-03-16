@@ -19,7 +19,7 @@ namespace dxvk {
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
-    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
     switch (pDesc->ViewDimension) {
@@ -130,8 +130,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11DepthStencilView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11DepthStencilView), riid)) {
+      Logger::warn("D3D11DepthStencilView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   

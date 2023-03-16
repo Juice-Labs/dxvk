@@ -1,13 +1,57 @@
 #include "dxgi_factory.h"
+#include "dxgi_surface.h"
 #include "dxgi_swapchain.h"
 #include "dxgi_swapchain_dispatcher.h"
 
+#include "../util/util_singleton.h"
+
 namespace dxvk {
 
+  Singleton<DxvkInstance> g_dxvkInstance;
+
+  DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
+  : m_factory(pFactory) {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE DxgiVkFactory::AddRef() {
+    return m_factory->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE DxgiVkFactory::Release() {
+    return m_factory->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::QueryInterface(
+          REFIID                    riid,
+          void**                    ppvObject) {
+    return m_factory->QueryInterface(riid, ppvObject);
+  }
+
+
+  void STDMETHODCALLTYPE DxgiVkFactory::GetVulkanInstance(
+          VkInstance*               pInstance,
+          PFN_vkGetInstanceProcAddr* ppfnVkGetInstanceProcAddr) {
+    auto instance = m_factory->GetDXVKInstance();
+
+    if (pInstance)
+      *pInstance = instance->handle();
+
+    if (ppfnVkGetInstanceProcAddr)
+      *ppfnVkGetInstanceProcAddr = instance->vki()->getLoaderProc();
+  }
+
+
+
+
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance    (new DxvkInstance()),
-    m_monitorInfo (this),
+  : m_instance    (g_dxvkInstance.acquire()),
+    m_interop     (this),
     m_options     (m_instance->config()),
+    m_monitorInfo (this, m_options),
     m_flags       (Flags) {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
@@ -15,7 +59,7 @@ namespace dxvk {
   
   
   DxgiFactory::~DxgiFactory() {
-    
+    g_dxvkInstance.release();
   }
   
   
@@ -39,13 +83,21 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(IDXGIVkInteropFactory)) {
+      *ppvObject = ref(&m_interop);
+      return S_OK;
+    }
+
     if (riid == __uuidof(IDXGIVkMonitorInfo)) {
       *ppvObject = ref(&m_monitorInfo);
       return S_OK;
     }
     
-    Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIFactory), riid)) {
+      Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -126,27 +178,52 @@ namespace dxvk {
     if (!ppSwapChain || !pDesc || !hWnd || !pDevice)
       return DXGI_ERROR_INVALID_CALL;
     
-    Com<IWineDXGISwapChainFactory> wineDevice;
-    
-    if (SUCCEEDED(pDevice->QueryInterface(
-          __uuidof(IWineDXGISwapChainFactory),
-          reinterpret_cast<void**>(&wineDevice)))) {
-      IDXGISwapChain4* frontendSwapChain;
+    // Make sure the back buffer size is not zero
+    DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
 
-      HRESULT hr = wineDevice->CreateSwapChainForHwnd(
-        this, hWnd, pDesc, pFullscreenDesc,
-        pRestrictToOutput, reinterpret_cast<IDXGISwapChain1**>(&frontendSwapChain));
+    wsi::getWindowSize(hWnd,
+      desc.Width  ? nullptr : &desc.Width,
+      desc.Height ? nullptr : &desc.Height);
 
-      // No ref as that's handled by the object we're wrapping
-      // which was ref'ed on creation.
-      if (SUCCEEDED(hr))
-        *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain);
+    // If necessary, set up a default set of
+    // fullscreen parameters for the swap chain
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
 
-      return hr;
+    if (pFullscreenDesc) {
+      fsDesc = *pFullscreenDesc;
+    } else {
+      fsDesc.RefreshRate      = { 0, 0 };
+      fsDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      fsDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      fsDesc.Windowed         = TRUE;
+    }
+
+    // Probe various modes to create the swap chain object
+    Com<IDXGISwapChain4> frontendSwapChain;
+
+    Com<IDXGIVkSwapChainFactory> dxvkFactory;
+
+    if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&dxvkFactory)))) {
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(
+        m_instance->vki()->getLoaderProc(), hWnd);
+
+      Com<IDXGIVkSwapChain> presenter;
+      HRESULT hr = dxvkFactory->CreateSwapChain(surfaceFactory.ptr(), &desc, &presenter);
+
+      if (FAILED(hr)) {
+        Logger::err(str::format("DXGI: CreateSwapChainForHwnd: Failed to create swap chain, hr ", hr));
+        return hr;
+      }
+
+      frontendSwapChain = new DxgiSwapChain(this, presenter.ptr(), hWnd, &desc, &fsDesc);
+    } else {
+      Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
+      return DXGI_ERROR_UNSUPPORTED;
     }
     
-    Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
-    return DXGI_ERROR_UNSUPPORTED;
+    // Wrap object in swap chain dispatcher
+    *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain.ref(), pDevice);
+    return S_OK;
   }
   
   

@@ -13,6 +13,9 @@
 
 #include "../util/util_time.h"
 
+#include "../wsi/wsi_window.h"
+#include "../wsi/wsi_monitor.h"
+
 namespace dxvk {
   
   class DxgiDevice;
@@ -24,7 +27,7 @@ namespace dxvk {
   public:
     
     DxgiSwapChain(
-            IDXGIFactory*               pFactory,
+            DxgiFactory*                pFactory,
             IDXGIVkSwapChain*           pPresenter,
             HWND                        hWnd,
       const DXGI_SWAP_CHAIN_DESC1*      pDesc,
@@ -169,18 +172,12 @@ namespace dxvk {
     
   private:
     
-    struct WindowState {
-      LONG style   = 0;
-      LONG exstyle = 0;
-      RECT rect    = { 0, 0, 0, 0 };
-    };
-    
     dxvk::recursive_mutex           m_lockWindow;
     dxvk::mutex                     m_lockBuffer;
 
-    Com<IDXGIFactory>               m_factory;
+    Com<DxgiFactory>                m_factory;
     Com<IDXGIAdapter>               m_adapter;
-    Com<IDXGIOutput>                m_target;
+    Com<IDXGIOutput1>               m_target;
     Com<IDXGIVkMonitorInfo>         m_monitorInfo;
     
     HWND                            m_window;
@@ -191,16 +188,16 @@ namespace dxvk {
     Com<IDXGIVkSwapChain>           m_presenter;
     
     HMONITOR                        m_monitor;
-    WindowState                     m_windowState;
+    wsi::DxvkWindowState            m_windowState;
     
     HRESULT EnterFullscreenMode(
-            IDXGIOutput             *pTarget);
+            IDXGIOutput1            *pTarget);
     
     HRESULT LeaveFullscreenMode();
     
     HRESULT ChangeDisplayMode(
-            IDXGIOutput*            pOutput,
-      const DXGI_MODE_DESC*         pDisplayMode);
+            IDXGIOutput1*           pOutput,
+      const DXGI_MODE_DESC1*        pDisplayMode);
     
     HRESULT RestoreDisplayMode(
             HMONITOR                hMonitor);
@@ -211,7 +208,7 @@ namespace dxvk {
     
     HRESULT GetOutputFromMonitor(
             HMONITOR                Monitor,
-            IDXGIOutput**           ppOutput);
+            IDXGIOutput1**          ppOutput);
     
     HRESULT AcquireMonitorData(
             HMONITOR                hMonitor,
@@ -219,10 +216,6 @@ namespace dxvk {
     
     void ReleaseMonitorData();
 
-    void NotifyModeChange(
-            HMONITOR                hMonitor,
-            BOOL                    Windowed);
-    
   };
   
 }
