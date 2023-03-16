@@ -71,7 +71,7 @@ namespace dxvk {
   }
   
   
-  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear) const {
+  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear, void* pNext) const {
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.size = m_physSliceStride * sliceCount;

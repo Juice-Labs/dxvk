@@ -452,14 +452,14 @@ namespace dxvk {
                 | VK_ACCESS_SHADER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
 
-    Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    Rc<DxvkBuffer> buffer = device->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     DxvkBufferViewCreateInfo viewInfo;
     viewInfo.format = VK_FORMAT_UNDEFINED;
     viewInfo.rangeOffset = 0;
     viewInfo.rangeLength = sizeof(uint32_t);
 
-    return device->createBufferView(buffer, &dxvkBufferCreateInfo, viewInfo);
+    return device->createBufferView(buffer, viewInfo);
   }
   
 }

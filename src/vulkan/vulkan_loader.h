@@ -18,7 +18,15 @@ namespace dxvk::vk {
    * can be called before creating a  instance.
    */
   struct LibraryLoader : public RcObject {
+    LibraryLoader();
+    ~LibraryLoader();
+    PFN_vkVoidFunction sym(VkInstance instance, const char* name) const;
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_getInstanceProcAddr; }
+    bool               valid() const;
+  protected:
+    HMODULE                   m_library             = nullptr;
+    PFN_vkGetInstanceProcAddr m_getInstanceProcAddr = nullptr;
   };
   
   
@@ -29,10 +37,12 @@ namespace dxvk::vk {
    * called for a specific instance.
    */
   struct InstanceLoader : public RcObject {
-    InstanceLoader(bool owned, VkInstance instance);
+    InstanceLoader(const Rc<LibraryLoader>& library, bool owned, VkInstance instance);
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_library->getLoaderProc(); }
     VkInstance instance() const { return m_instance; }
   protected:
+    Rc<LibraryLoader> m_library;
     const VkInstance m_instance;
     const bool       m_owned;
   };
@@ -45,10 +55,11 @@ namespace dxvk::vk {
    * specific device.
    */
   struct DeviceLoader : public RcObject {
-    DeviceLoader(bool owned, VkInstance instance, VkDevice device);
+    DeviceLoader(const Rc<InstanceLoader>& library, bool owned, VkDevice device);
     PFN_vkVoidFunction sym(const char* name) const;
     VkDevice device() const { return m_device; }
   protected:
+    Rc<InstanceLoader>            m_library;
     const PFN_vkGetDeviceProcAddr m_getDeviceProcAddr;
     const VkDevice                m_device;
     const bool                    m_owned;
@@ -78,7 +89,7 @@ namespace dxvk::vk {
    * are independent of any Vulkan devices.
    */
   struct InstanceFn : InstanceLoader {
-    InstanceFn(bool owned, VkInstance instance);
+    InstanceFn(const Rc<LibraryLoader>& library, bool owned, VkInstance instance);
     ~InstanceFn();
     
     VULKAN_FN(vkCreateDevice);
@@ -145,6 +156,9 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdBeginDebugUtilsLabelEXT);
     VULKAN_FN(vkCmdEndDebugUtilsLabelEXT);
     VULKAN_FN(vkCmdInsertDebugUtilsLabelEXT);
+    VULKAN_FN(vkCreateDebugUtilsMessengerEXT);
+    VULKAN_FN(vkDestroyDebugUtilsMessengerEXT);
+    VULKAN_FN(vkSubmitDebugUtilsMessageEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
@@ -160,7 +174,7 @@ namespace dxvk::vk {
    * This ensures that no slow dispatch code is executed.
    */
   struct DeviceFn : DeviceLoader {
-    DeviceFn(bool owned, VkInstance instance, VkDevice device);
+    DeviceFn(const Rc<InstanceLoader>& library, bool owned, VkDevice device);
     ~DeviceFn();
     
     VULKAN_FN(vkDestroyDevice);

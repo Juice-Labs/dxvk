@@ -40,6 +40,7 @@ if get_option('build_id')
 endif
 
 dxvk_include_dirs = [
+  '../../common/vulkan/include',
   './include',
   './include/vulkan/include',
   './include/spirv/include'
@@ -77,16 +78,6 @@ if platform == 'windows'
       '-Wl,--enable-stdcall-fixup',
       '-Wl,--add-stdcall-alias',
   ]
-  endif
-
-  lib_d3d9    = cpp.find_library('d3d9')
-  lib_d3d11   = cpp.find_library('d3d11')
-  lib_dxgi    = cpp.find_library('dxgi')
-
-  if dxvk_is_msvc
-    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
-  else
-    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47')
   endif
 
   if dxvk_is_msvc
@@ -150,8 +141,6 @@ if dxvk_debug
 else
   add_project_arguments('-DNDEBUG',   language : 'c')
 endif
-
-dxvk_include_path = include_directories('../../common/vulkan/include', './include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'

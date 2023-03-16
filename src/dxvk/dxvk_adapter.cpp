@@ -361,15 +361,11 @@ namespace dxvk {
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
-      //&devExtensions.khrImageFormatList,
-      &devExtensions.khrSamplerMirrorClampToEdge,
-      &devExtensions.khrShaderFloatControls,
       &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
-      &devExtensions.khrCopyCommands2,
     }};
 
     // Only enable Cuda interop extensions in 64-bit builds in

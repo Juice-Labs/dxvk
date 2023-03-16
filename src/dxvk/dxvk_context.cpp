@@ -1220,7 +1220,8 @@ namespace dxvk {
 
 
   void DxvkContext::discardBuffer(
-    const Rc<DxvkBuffer>&       buffer) {
+    const Rc<DxvkBuffer>&       buffer,
+    VkDxvkTypeJUICE             type) {
     if ((buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
      || (buffer->info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT))
       return;
