@@ -4,6 +4,16 @@
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
 
+static const LONG_PTR requiredStyles =
+    WS_POPUP | WS_BORDER | WS_CAPTION | WS_SYSMENU |
+    WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_THICKFRAME
+;
+
+static const LONG_PTR requiredExtendedStyles =
+    WS_EX_CLIENTEDGE | WS_EX_CONTEXTHELP | WS_EX_DLGMODALFRAME |
+    WS_EX_TOOLWINDOW | WS_EX_WINDOWEDGE
+;
+
 namespace dxvk::wsi {
 
   static bool getMonitorDisplayMode(
@@ -181,7 +191,29 @@ namespace dxvk::wsi {
     
     style   &= ~WS_OVERLAPPEDWINDOW;
     exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
-    
+
+    // Ensure that window styles are valid for D3D11 swapchain creation on
+    // the specified surface.  Without the required window styles
+    // DXGIFactory::CreateSwapChainForHwnd() fails with DXGI_ERROR_INVALID_CALL
+    // with the following error shown when debug is enabled on the D3D11 device:
+    //
+    // DXGI ERROR: IDXGIFactory::CreateSwapChain: The specified output window
+    // has a style that is incompatible with DXGI. Output windows must have
+    // at least one of: WS_POPUP, WS_BORDER, WS_CAPTION, WS_SYSMENU,
+    // WS_MAXIMIZEBOX, WS_MINIMIZEBOX, WS_THICKFRAME, WS_EX_CLIENTEDGE,
+    // WS_EX_CONTEXTHELP, WS_EX_DLGMODALFRAME, WS_EX_TOOLWINDOW,
+    // WS_EX_WINDOWEDGE or not have WS_EX_TOPMOST.
+    // [ MISCELLANEOUS ERROR #78: ]
+    //
+    // Clearing those window styles is a problem for Juice because it creates
+    // a D3D11 swapchain on that window when it presents images.  If that
+    // swapchain creation fails then Juice can't present any images.
+    //
+    if (!(style & requiredStyles) && !(exstyle & requiredExtendedStyles))
+    {
+        style |= WS_POPUP;
+    }
+
     ::SetWindowLongW(hWindow, GWL_STYLE, style);
     ::SetWindowLongW(hWindow, GWL_EXSTYLE, exstyle);
 
@@ -204,6 +236,13 @@ namespace dxvk::wsi {
     // changed them. This is in line with what native DXGI does.
     LONG curStyle   = ::GetWindowLongW(hWindow, GWL_STYLE)   & ~WS_VISIBLE;
     LONG curExstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
+
+    LONG style = pState->style;
+    LONG exstyle = pState->exstyle;
+    if (!(style & requiredStyles) && !(exstyle & requiredExtendedStyles))
+    {
+        curStyle &= ~WS_POPUP;
+    }
 
     if (curStyle   == (pState->style   & ~(WS_VISIBLE    | WS_OVERLAPPEDWINDOW))
      && curExstyle == (pState->exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
