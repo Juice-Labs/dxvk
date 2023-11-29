@@ -8,7 +8,33 @@
 #include "dxvk_options.h"
 
 namespace dxvk {
-  
+
+  /**
+   * \brief Vulkan instance creation parameters
+   */
+  struct DxvkInstanceImportInfo {
+    PFN_vkGetInstanceProcAddr loaderProc;
+    VkInstance instance;
+    uint32_t extensionCount;
+    const char** extensionNames;
+  };
+
+
+  /**
+   * \brief Instance creation flags
+   *
+   * These flags will be passed to the app version field of the Vulkan
+   * instance, so that drivers can adjust behaviour for some edge cases
+   * that are not implementable with Vulkan itself.
+   */
+  enum class DxvkInstanceFlag : uint32_t {
+    /** Enforce D3D9 behaviour for texture coordinate snapping */
+    ClientApiIsD3D9,
+  };
+
+  using DxvkInstanceFlags = Flags<DxvkInstanceFlag>;
+
+
   /**
    * \brief DXVK instance
    * 
@@ -19,8 +45,21 @@ namespace dxvk {
   class DxvkInstance : public RcObject {
     
   public:
-    
-    DxvkInstance();
+
+    /**
+     * \brief Creates new Vulkan instance
+     * \param [in] flags Instance flags
+     */
+    explicit DxvkInstance(DxvkInstanceFlags flags);
+
+    /**
+     * \brief Imports existing Vulkan instance
+     * \param [in] flags Instance flags
+     */
+    explicit DxvkInstance(
+      const DxvkInstanceImportInfo& args,
+            DxvkInstanceFlags       flags);
+
     ~DxvkInstance();
     
     /**
@@ -108,22 +147,31 @@ namespace dxvk {
     
   private:
 
-    Config              m_config;
-    DxvkOptions         m_options;
+    Config                  m_config;
+    DxvkOptions             m_options;
 
     Rc<vk::LibraryFn>       m_vkl;
     Rc<vk::InstanceFn>      m_vki;
     DxvkInstanceExtensions  m_extensions;
-
-    bool m_enablePerfEvents = false;
-    bool m_enableValidation = false;
 
     VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
 
     std::vector<DxvkExtensionProvider*> m_extProviders;
     std::vector<Rc<DxvkAdapter>> m_adapters;
     
-    VkInstance createInstance();
+    void createLibraryLoader(
+      const DxvkInstanceImportInfo& args);
+
+    void createInstanceLoader(
+      const DxvkInstanceImportInfo& args,
+            DxvkInstanceFlags       flags);
+
+    std::vector<DxvkExt*> getExtensionList(
+            DxvkInstanceExtensions& ext,
+            bool                    withDebug);
+
+    DxvkNameSet getExtensionSet(
+      const DxvkNameList& extensions);
 
     std::vector<Rc<DxvkAdapter>> queryAdapters();
     

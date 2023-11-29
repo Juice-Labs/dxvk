@@ -89,6 +89,8 @@ namespace dxvk {
 
     D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type);
 
+    ~D3D9StateBlock();
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
         REFIID  riid,
         void** ppvObject) final;
@@ -264,7 +266,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts.fConsts[idx], 1);
+            dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts->fConsts[idx], 1);
           }
         }
 
@@ -272,13 +274,13 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts.iConsts[idx], 1);
+            dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts->iConsts[idx], 1);
           }
         }
 
         if (m_captures.vsConsts.bConsts.any()) {
           for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.dwordCount(); i++)
-            dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts.bConsts[i]);
+            dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts->bConsts[i]);
         }
       }
 
@@ -287,7 +289,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts.fConsts[idx], 1);
+            dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts->fConsts[idx], 1);
           }
         }
 
@@ -295,13 +297,13 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts.iConsts[idx], 1);
+            dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts->iConsts[idx], 1);
           }
         }
 
         if (m_captures.psConsts.bConsts.any()) {
           for (uint32_t i = 0; i < m_captures.psConsts.bConsts.dwordCount(); i++)
-            dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts.bConsts[i]);
+            dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts->bConsts[i]);
         }
       }
 
@@ -394,7 +396,7 @@ namespace dxvk {
     D3D9CapturableState  m_state;
     D3D9StateCaptures    m_captures;
 
-    D3D9CapturableState* m_deviceState;
+    D3D9DeviceState* m_deviceState;
 
     bool                 m_applying = false;
 

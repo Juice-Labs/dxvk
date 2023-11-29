@@ -23,10 +23,16 @@ typedef uint32_t UINT;
 
 typedef int32_t LONG;
 typedef uint32_t ULONG;
+typedef int32_t *LPLONG;
 
 typedef int32_t HRESULT;
 
 typedef wchar_t WCHAR;
+typedef WCHAR *NWPSTR, *LPWSTR, *PWSTR;
+typedef unsigned char UCHAR, *PUCHAR;
+
+typedef char CHAR;
+typedef const CHAR *LPCSTR, *PCSTR;
 
 typedef INT BOOL;
 typedef BOOL WINBOOL;
@@ -35,11 +41,13 @@ typedef uint16_t UINT16;
 typedef uint32_t UINT32;
 typedef uint64_t UINT64;
 typedef void VOID;
+typedef void* PVOID;
 typedef void* LPVOID;
 typedef const void* LPCVOID;
 
 typedef size_t SIZE_T;
 
+typedef int8_t INT8;
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
 
@@ -47,7 +55,13 @@ typedef int16_t SHORT;
 typedef uint16_t USHORT;
 
 typedef int64_t LONGLONG;
+typedef int64_t INT64;
+
 typedef uint64_t ULONGLONG;
+typedef uint64_t UINT64;
+
+typedef intptr_t LONG_PTR;
+typedef uintptr_t ULONG_PTR;
 
 typedef float FLOAT;
 
@@ -66,9 +80,11 @@ typedef GUID IID;
 #ifdef __cplusplus
 #define REFIID const IID&
 #define REFGUID const GUID&
+#define REFCLSID const GUID&
 #else
 #define REFIID const IID*
 #define REFGUID const GUID*
+#define REFCLSID const GUID* const
 #endif // __cplusplus
 
 #ifdef __cplusplus
@@ -86,6 +102,7 @@ inline bool operator!=(const GUID& a, const GUID& b) { return std::memcmp(&a, &b
 
 typedef uint32_t DWORD;
 typedef uint16_t WORD;
+typedef DWORD *LPDWORD;
 
 typedef void* HANDLE;
 typedef HANDLE HMONITOR;
@@ -106,6 +123,12 @@ typedef uint32_t UINT_PTR;
 #endif
 typedef INT_PTR*  PINT_PTR;
 typedef UINT_PTR* PUINT_PTR;
+
+#ifdef STRICT
+#define DECLARE_HANDLE(a) typedef struct a##__ { int unused; } *a
+#else /*STRICT*/
+#define DECLARE_HANDLE(a) typedef HANDLE a
+#endif /*STRICT*/
 
 typedef char* LPSTR;
 typedef wchar_t* LPWSTR;
@@ -129,12 +152,12 @@ typedef struct RECT {
   LONG top;
   LONG right;
   LONG bottom;
-} RECT;
+} RECT,*PRECT,*NPRECT,*LPRECT;
 
 typedef struct SIZE {
   LONG cx;
   LONG cy;
-} SIZE;
+} SIZE,*PSIZE,*LPSIZE;
 
 typedef union {
   struct {
@@ -166,7 +189,7 @@ typedef struct PALETTEENTRY {
   BYTE peGreen;
   BYTE peBlue;
   BYTE peFlags;
-} PALETTEENTRY;
+} PALETTEENTRY, *PPALETTEENTRY, *LPPALETTEENTRY;
 
 typedef struct RGNDATAHEADER {
   DWORD dwSize;
@@ -179,7 +202,7 @@ typedef struct RGNDATAHEADER {
 typedef struct RGNDATA {
   RGNDATAHEADER rdh;
   char          Buffer[1];
-} RGNDATA;
+} RGNDATA,*PRGNDATA,*NPRGNDATA,*LPRGNDATA;
 
 // Ignore these.
 #define STDMETHODCALLTYPE
@@ -190,6 +213,11 @@ typedef struct RGNDATA {
 
 #define TRUE 1
 #define FALSE 0
+
+#define WAIT_TIMEOUT    0x00000102
+#define WAIT_FAILED	    0xffffffff
+#define WAIT_OBJECT_0		0
+#define WAIT_ABANDONED  0x00000080
 
 #define interface struct
 #define MIDL_INTERFACE(x) struct
@@ -278,6 +306,7 @@ typedef struct RGNDATA {
 #define THIS_
 #define THIS
 
+#define __C89_NAMELESSSTRUCTNAME
 #define __C89_NAMELESSUNIONNAME
 #define __C89_NAMELESSUNIONNAME1
 #define __C89_NAMELESSUNIONNAME2
@@ -290,6 +319,15 @@ typedef struct RGNDATA {
 #define __C89_NAMELESS
 #define DUMMYUNIONNAME
 #define DUMMYSTRUCTNAME
+#define DUMMYUNIONNAME1
+#define DUMMYUNIONNAME2
+#define DUMMYUNIONNAME3
+#define DUMMYUNIONNAME4
+#define DUMMYUNIONNAME5
+#define DUMMYUNIONNAME6
+#define DUMMYUNIONNAME7
+#define DUMMYUNIONNAME8
+#define DUMMYUNIONNAME9
 
 #ifdef __cplusplus
 #define DECLARE_INTERFACE(x)     struct x
@@ -327,3 +365,25 @@ typedef struct RGNDATA {
 
 #define FAILED(hr) ((HRESULT)(hr) < 0)
 #define SUCCEEDED(hr) ((HRESULT)(hr) >= 0)
+
+#define RtlZeroMemory(Destination,Length) memset((Destination),0,(Length))
+#define ZeroMemory RtlZeroMemory
+
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+
+#ifdef __cplusplus
+# define DEFINE_ENUM_FLAG_OPERATORS(type) \
+extern "C++" \
+{ \
+    inline type operator &(type x, type y) { return (type)((int)x & (int)y); } \
+    inline type operator &=(type &x, type y) { return (type &)((int &)x &= (int)y); } \
+    inline type operator ~(type x) { return (type)~(int)x; } \
+    inline type operator |(type x, type y) { return (type)((int)x | (int)y); } \
+    inline type operator |=(type &x, type y) { return (type &)((int &)x |= (int)y); } \
+    inline type operator ^(type x, type y) { return (type)((int)x ^ (int)y); } \
+    inline type operator ^=(type &x, type y) { return (type &)((int &)x ^= (int)y); } \
+}
+#else
+# define DEFINE_ENUM_FLAG_OPERATORS(type)
+#endif
+#endif /* DEFINE_ENUM_FLAG_OPERATORS */

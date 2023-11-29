@@ -17,6 +17,7 @@ namespace dxvk {
     friend class D3D11CommonContext<D3D11ImmediateContext>;
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
+    friend class D3D11DXGIKeyedMutex;
   public:
     
     D3D11ImmediateContext(
@@ -77,8 +78,20 @@ namespace dxvk {
             ID3DDeviceContextState*           pState,
             ID3DDeviceContextState**          ppPreviousState);
 
+    void Acquire11on12Resource(
+            ID3D11Resource*             pResource,
+            VkImageLayout               SrcLayout);
+
+    void Release11on12Resource(
+            ID3D11Resource*             pResource,
+            VkImageLayout               DstLayout);
+
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
+
+    D3D10Multithread& GetMultithread() {
+        return m_multithread;
+    }
 
     D3D10DeviceLock LockContext() {
       return m_multithread.AcquireLock();
@@ -95,6 +108,7 @@ namespace dxvk {
 
     Rc<sync::CallbackFence> m_submissionFence;
     uint64_t                m_submissionId = 0ull;
+    DxvkSubmitStatus        m_submitStatus;
 
     uint64_t                m_flushSeqNum = 0ull;
     GpuFlushTracker         m_flushTracker;
@@ -165,7 +179,8 @@ namespace dxvk {
 
     void ExecuteFlush(
             GpuFlushType                FlushType,
-            HANDLE                      hEvent);
+            HANDLE                      hEvent,
+            BOOL                        Synchronize);
 
   };
   

@@ -54,16 +54,6 @@ namespace dxvk {
     /// Overrides buffer count in present parameters.
     int32_t numBackBuffers;
 
-    /// Don't create an explicit front buffer in our own swapchain. The Vulkan swapchain is unaffected.
-    /// Some games don't handle front/backbuffer flipping very well because they don't always redraw
-    /// each frame completely, and rely on old pixel data from the previous frame to still be there.
-    /// When this option is set and a game only requests one backbuffer, there will be no flipping in
-    /// our own swapchain, so the game will always draw to the same buffer and can rely on old pixel
-    /// data to still be there after a Present call.
-    /// This means that D3D9SwapChainEx::GetFrontBufferData returns data from the backbuffer of the
-    /// previous frame, which is the same as the current backbuffer if only 1 backbuffer was requested.
-    bool noExplicitFrontBuffer;
-
     /// Defer surface creation
     bool deferSurfaceCreation;
 
@@ -126,9 +116,6 @@ namespace dxvk {
     /// Forces sample rate shading
     bool forceSampleRateShading;
 
-    /// Allow D3DLOCK_DISCARD
-    bool allowDiscard;
-
     /// Enumerate adapters by displays
     bool enumerateByDisplays;
 
@@ -137,12 +124,8 @@ namespace dxvk {
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
 
-    /// Tear-free mode if vsync is disabled
-    /// Tearing mode if vsync is enabled
-    Tristate tearFree;
-
-    /// Apitrace mode: Maps all buffers in cached memory.
-    bool apitraceMode;
+    /// Cached dynamic buffers: Maps all buffers in cached memory.
+    bool cachedDynamicBuffers;
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;
@@ -153,11 +136,22 @@ namespace dxvk {
     /// Don't use non seamless cube maps
     bool seamlessCubes;
 
+    /// Mipmap LOD bias
+    ///
+    /// Enforces the given LOD bias for all samplers.
+    float samplerLodBias;
+
+    /// Clamps negative LOD bias
+    bool clampNegativeLodBias;
+
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
 
     /// Shader dump path
     std::string shaderDumpPath;
+
+    /// Enable emulation of device loss when a fullscreen app loses focus
+    bool deviceLossOnFocusLoss;
   };
 
 }

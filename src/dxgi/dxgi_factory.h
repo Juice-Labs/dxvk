@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <mutex>
 
 #include "dxgi_adapter.h"
 #include "dxgi_monitor.h"
@@ -12,7 +13,13 @@ namespace dxvk {
 
   class DxgiFactory;
 
-  class DxgiVkFactory : public IDXGIVkInteropFactory {
+  struct DXVK_VK_GLOBAL_HDR_STATE {
+    uint32_t Serial;
+    DXGI_COLOR_SPACE_TYPE ColorSpace;
+    DXGI_VK_HDR_METADATA  Metadata;
+  };
+
+  class DxgiVkFactory : public IDXGIVkInteropFactory1 {
 
   public:
 
@@ -29,6 +36,14 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetVulkanInstance(
             VkInstance*               pInstance,
             PFN_vkGetInstanceProcAddr* ppfnVkGetInstanceProcAddr);
+
+    HRESULT STDMETHODCALLTYPE GetGlobalHDRState(
+            DXGI_COLOR_SPACE_TYPE   *pOutColorSpace,
+            DXGI_HDR_METADATA_HDR10 *pOutMetadata);
+
+    HRESULT STDMETHODCALLTYPE SetGlobalHDRState(
+            DXGI_COLOR_SPACE_TYPE    ColorSpace,
+      const DXGI_HDR_METADATA_HDR10 *pMetadata);
 
   private:
 
@@ -158,6 +173,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE UnregisterAdaptersChangedEvent(
             DWORD                 Cookie);
 
+    BOOL UseMonitorFallback() const {
+      return m_monitorFallback;
+    }
+
     Rc<DxvkInstance> GetDXVKInstance() const {
       return m_instance;
     }
@@ -169,6 +188,8 @@ namespace dxvk {
     DxgiMonitorInfo* GetMonitorInfo() {
       return &m_monitorInfo;
     }
+
+    DXVK_VK_GLOBAL_HDR_STATE GlobalHDRState();
     
   private:
     
@@ -177,9 +198,8 @@ namespace dxvk {
     DxgiOptions      m_options;
     DxgiMonitorInfo  m_monitorInfo;
     UINT             m_flags;
-    
-    HWND m_associatedWindow = nullptr;
-    
+    BOOL             m_monitorFallback;
+      
   };
   
 }

@@ -15,6 +15,7 @@
 #include "dxvk_objects.h"
 #include "dxvk_options.h"
 #include "dxvk_pipemanager.h"
+#include "dxvk_presenter.h"
 #include "dxvk_queue.h"
 #include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
@@ -24,8 +25,6 @@
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
 #include "dxvk_marker.h"
-
-#include "../vulkan/vulkan_presenter.h"
 
 namespace dxvk {
   
@@ -86,7 +85,9 @@ namespace dxvk {
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
-      const DxvkDeviceFeatures&       features);
+      const DxvkDeviceFeatures&       features,
+      const DxvkDeviceQueueSet&       queues,
+      const DxvkQueueCallback&        queueCallback);
       
     ~DxvkDevice();
     
@@ -357,29 +358,6 @@ namespace dxvk {
       const DxvkImageCreateInfo&  createInfo,
             void*                 pNext,
             VkMemoryPropertyFlags memoryType);
-
-    /**
-     * \brief Creates an image object for an existing VkImage
-     * 
-     * \param [in] createInfo Image create info
-     * \param [in] image Vulkan image to wrap
-     * \returns The image object
-     */
-    Rc<DxvkImage> createImageFromVkImage(
-      const DxvkImageCreateInfo&  createInfo,
-            VkImage               image);
-
-    /**
-     * \brief Creates an image object for an existing VkImage
-     * 
-     * \param [in] createInfo Image create info
-     * \param [in] image Vulkan image to wrap
-     * \returns The image object
-     */
-    Rc<DxvkImage> createImageFromVkImage(
-      const DxvkImageCreateInfo&  createInfo,
-            void*                 pNext,
-            VkImage               image);
     
     /**
      * \brief Creates an image view
@@ -408,6 +386,32 @@ namespace dxvk {
     Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
+     * \brief Imports a buffer
+     *
+     * \param [in] createInfo Buffer create info
+     * \param [in] importInfo Buffer import info
+     * \param [in] memoryType Memory type flags
+     * \returns The buffer object
+     */
+    Rc<DxvkBuffer> importBuffer(
+      const DxvkBufferCreateInfo& createInfo,
+      const DxvkBufferImportInfo& importInfo,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
+     * \brief Imports an image
+     *
+     * \param [in] createInfo Image create info
+     * \param [in] image Vulkan image to wrap
+     * \param [in] memoryType Memory type flags
+     * \returns The image object
+     */
+    Rc<DxvkImage> importImage(
+      const DxvkImageCreateInfo&  createInfo,
+            VkImage               image,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
      * \brief Retrieves stat counters
      * 
      * Can be used by the HUD to display some
@@ -431,6 +435,30 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
+     * \brief Notifies adapter about memory allocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryAlloc(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryAlloc(heap, bytes);
+    }
+
+    /**
+     * \brief Notifies adapter about memory suballocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryUse(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryUse(heap, bytes);
+    }
+
+    /**
      * \brief Registers a shader
      * \param [in] shader Newly compiled shader
      */
@@ -451,10 +479,14 @@ namespace dxvk {
      * the submission thread. The status of this operation
      * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
+     * \param [in] presenteMode Present mode
+     * \param [in] frameId Optional frame ID
      * \param [out] status Present status
      */
     void presentImage(
-      const Rc<vk::Presenter>&        presenter,
+      const Rc<Presenter>&            presenter,
+            VkPresentModeKHR          presentMode,
+            uint64_t                  frameId,
             DxvkSubmitStatus*         status);
     
     /**
@@ -463,9 +495,11 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
+     * \param [out] status Submission feedback
      */
     void submitCommandList(
-      const Rc<DxvkCommandList>&      commandList);
+      const Rc<DxvkCommandList>&      commandList,
+            DxvkSubmitStatus*         status);
 
     /**
      * \brief Locks submission queue
@@ -487,17 +521,6 @@ namespace dxvk {
      */
     void unlockSubmission() {
       m_submissionQueue.unlockDeviceQueue();
-    }
-
-    /**
-     * \brief Number of pending submissions
-     * 
-     * A return value of 0 indicates
-     * that the GPU is currently idle.
-     * \returns Pending submission count
-     */
-    uint32_t pendingSubmissions() const {
-      return m_submissionQueue.pendingSubmissions();
     }
 
     /**
@@ -558,17 +581,13 @@ namespace dxvk {
     
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     
-    DxvkSubmissionQueue m_submissionQueue;
+    DxvkSubmissionQueue         m_submissionQueue;
 
     DxvkDevicePerfHints getPerfHints();
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
-    DxvkDeviceQueue getQueue(
-            uint32_t                family,
-            uint32_t                index) const;
-    
+
   };
   
 }

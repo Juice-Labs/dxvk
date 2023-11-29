@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "dxgi_factory.h"
 #include "dxgi_surface.h"
 #include "dxgi_swapchain.h"
@@ -8,6 +10,9 @@
 namespace dxvk {
 
   Singleton<DxvkInstance> g_dxvkInstance;
+
+  std::mutex s_globalHDRStateMutex;
+  DXVK_VK_GLOBAL_HDR_STATE s_globalHDRState{};
 
   DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
   : m_factory(pFactory) {
@@ -45,16 +50,87 @@ namespace dxvk {
   }
 
 
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::GetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE   *pOutColorSpace,
+          DXGI_HDR_METADATA_HDR10 *pOutMetadata) {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    if (!s_globalHDRState.Serial)
+      return S_FALSE;
+
+    *pOutColorSpace = s_globalHDRState.ColorSpace;
+    *pOutMetadata   = s_globalHDRState.Metadata.HDR10;
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::SetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE    ColorSpace,
+    const DXGI_HDR_METADATA_HDR10 *pMetadata) {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    static uint32_t s_GlobalHDRStateSerial = 0;
+
+    s_globalHDRState.Serial     = ++s_GlobalHDRStateSerial;
+    s_globalHDRState.ColorSpace = ColorSpace;
+    s_globalHDRState.Metadata.Type  = DXGI_HDR_METADATA_TYPE_HDR10;
+    s_globalHDRState.Metadata.HDR10 = *pMetadata;
+
+    return S_OK;
+  }
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance    (g_dxvkInstance.acquire()),
-    m_interop     (this),
-    m_options     (m_instance->config()),
-    m_monitorInfo (this, m_options),
-    m_flags       (Flags) {
-    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
-      m_instance->enumAdapters(i)->logAdapterInfo();
+  : m_instance        (g_dxvkInstance.acquire(0)),
+    m_interop         (this),
+    m_options         (m_instance->config()),
+    m_monitorInfo     (this, m_options),
+    m_flags           (Flags),
+    m_monitorFallback (false) {
+    // Be robust against situations where some monitors are not
+    // associated with any adapter. This can happen if device
+    // filter options are used.
+    std::vector<HMONITOR> monitors;
+
+    for (uint32_t i = 0; ; i++) {
+      HMONITOR hmon = wsi::enumMonitors(i);
+
+      if (!hmon)
+        break;
+
+      monitors.push_back(hmon);
+    }
+
+    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
+      auto adapter = m_instance->enumAdapters(i);
+      adapter->logAdapterInfo();
+
+      // Remove all monitors that are associated
+      // with the current adapter from the list.
+      const auto& vk11 = adapter->devicePropertiesExt().vk11;
+
+      if (vk11.deviceLUIDValid) {
+        auto luid = reinterpret_cast<const LUID*>(&vk11.deviceLUID);
+
+        for (uint32_t j = 0; ; j++) {
+          HMONITOR hmon = wsi::enumMonitors(&luid, 1, j);
+
+          if (!hmon)
+            break;
+
+          auto entry = std::find(monitors.begin(), monitors.end(), hmon);
+
+          if (entry != monitors.end())
+            monitors.erase(entry);
+        }
+      }
+    }
+
+
+    // If any monitors are left on the list, enable the
+    // fallback to always enumerate all monitors.
+    if ((m_monitorFallback = !monitors.empty()))
+      Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
+    else
+      m_monitorFallback = m_options.useMonitorFallback;
   }
   
   
@@ -83,7 +159,8 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(IDXGIVkInteropFactory)) {
+    if (riid == __uuidof(IDXGIVkInteropFactory)
+     || riid == __uuidof(IDXGIVkInteropFactory1)) {
       *ppvObject = ref(&m_interop);
       return S_OK;
     }
@@ -363,7 +440,8 @@ namespace dxvk {
     if (pWindowHandle == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    *pWindowHandle = m_associatedWindow;
+    // Wine tests show that this is always null for whatever reason
+    *pWindowHandle = nullptr;
     return S_OK;
   }
   
@@ -378,7 +456,6 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
     Logger::warn("DXGI: MakeWindowAssociation: Ignoring flags");
-    m_associatedWindow = WindowHandle;
     return S_OK;
   }
   
@@ -474,5 +551,10 @@ namespace dxvk {
     return E_NOTIMPL;
   }
 
+
+  DXVK_VK_GLOBAL_HDR_STATE DxgiFactory::GlobalHDRState() {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    return s_globalHDRState;
+  }
 
 }

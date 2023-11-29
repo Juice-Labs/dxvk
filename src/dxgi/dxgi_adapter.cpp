@@ -148,12 +148,39 @@ namespace dxvk {
     
     if (ppOutput == nullptr)
       return E_INVALIDARG;
-    
-    HMONITOR monitor = wsi::enumMonitors(Output);
-    
+
+    const auto& deviceId = m_adapter->devicePropertiesExt().vk11;
+
+    std::array<const LUID*, 2> adapterLUIDs = { };
+    uint32_t numLUIDs = 0;
+
+    if (m_adapter->isLinkedToDGPU())
+      return DXGI_ERROR_NOT_FOUND;
+
+    if (deviceId.deviceLUIDValid)
+      adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+
+    auto linkedAdapter = m_adapter->linkedIGPUAdapter();
+
+    // If either LUID is not valid, enumerate all monitors.
+    if (numLUIDs && linkedAdapter != nullptr) {
+      const auto& deviceId = linkedAdapter->devicePropertiesExt().vk11;
+
+      if (deviceId.deviceLUIDValid)
+        adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+      else
+        numLUIDs = 0;
+    }
+
+    // Enumerate all monitors if the robustness fallback is active.
+    if (m_factory->UseMonitorFallback())
+      numLUIDs = 0;
+
+    HMONITOR monitor = wsi::enumMonitors(adapterLUIDs.data(), numLUIDs, Output);
+
     if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
-    
+
     *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
@@ -256,13 +283,33 @@ namespace dxvk {
     std::string description = options->customDeviceDesc.empty()
       ? std::string(deviceProp.deviceName)
       : options->customDeviceDesc;
-    
-    // XXX nvapi workaround for a lot of Unreal Engine 4 games
-    if (options->customVendorId < 0 && options->customDeviceId < 0
-     && options->nvapiHack && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
-      Logger::info("DXGI: NvAPI workaround enabled, reporting AMD GPU");
-      deviceProp.vendorID = uint16_t(DxvkGpuVendor::Amd);
-      deviceProp.deviceID = 0x67df; /* RX 480 */
+
+    if (options->customVendorId < 0) {
+      uint16_t fallbackVendor = 0xdead;
+      uint16_t fallbackDevice = 0xbeef;
+
+      if (!options->hideAmdGpu) {
+        // AMD RX 6700XT
+        fallbackVendor = uint16_t(DxvkGpuVendor::Amd);
+        fallbackDevice = 0x73df;
+      } else if (!options->hideNvidiaGpu) {
+        // Nvidia RTX 3060
+        fallbackVendor = uint16_t(DxvkGpuVendor::Nvidia);
+        fallbackDevice = 0x2487;
+      }
+
+      bool hideGpu = (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && options->hideNvidiaGpu)
+                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
+                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
+
+      if (hideGpu) {
+        deviceProp.vendorID = fallbackVendor;
+
+        if (options->customDeviceId < 0)
+          deviceProp.deviceID = fallbackDevice;
+
+        Logger::info(str::format("DXGI: Hiding actual GPU, reporting vendor ID 0x", std::hex, deviceProp.vendorID, ", device ID ", deviceProp.deviceID));
+      }
     }
     
     // Convert device name
@@ -352,23 +399,24 @@ namespace dxvk {
     if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     
-    pVideoMemoryInfo->Budget       = 0;
+    pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
+    pVideoMemoryInfo->AvailableForReservation = 0;
 
     for (uint32_t i = 0; i < memInfo.heapCount; i++) {
       if ((memInfo.heaps[i].heapFlags & heapFlagMask) != heapFlags)
         continue;
       
-      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryBudget;
+      pVideoMemoryInfo->Budget += memInfo.heaps[i].memoryBudget;
       pVideoMemoryInfo->CurrentUsage += memInfo.heaps[i].memoryAllocated;
+      pVideoMemoryInfo->AvailableForReservation += memInfo.heaps[i].heapSize / 2;
     }
 
     // We don't implement reservation, but the observable
     // behaviour should match that of Windows drivers
     uint32_t segmentId = uint32_t(MemorySegmentGroup);
 
-    pVideoMemoryInfo->AvailableForReservation = pVideoMemoryInfo->Budget / 2;
-    pVideoMemoryInfo->CurrentReservation      = m_memReservation[segmentId];
+    pVideoMemoryInfo->CurrentReservation = m_memReservation[segmentId];
     return S_OK;
   }
 

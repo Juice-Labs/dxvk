@@ -31,11 +31,12 @@ namespace dxvk {
       AddDirtyBox(nullptr, i);
     }
 
-    if (m_desc.Pool != D3DPOOL_DEFAULT) {
+    if (m_desc.Pool != D3DPOOL_DEFAULT && pSharedHandle) {
+      throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
+    }
+
+    if (IsPoolManaged(m_desc.Pool)) {
       SetAllNeedUpload();
-      if (pSharedHandle) {
-        throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
-      }
     }
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
@@ -98,6 +99,9 @@ namespace dxvk {
       m_device->ChangeReportedMemory(m_size);
 
     m_device->RemoveMappedTexture(this);
+
+    if (m_desc.Pool == D3DPOOL_DEFAULT)
+      m_device->DecrementLosableCounter();
   }
 
 
@@ -238,13 +242,21 @@ namespace dxvk {
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       GetExtent(), MipLevel);
 
+    VkExtent3D blockSize = formatInfo->blockSize;
+    uint32_t elementSize = formatInfo->elementSize;
+    if (unlikely(formatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
+      // D3D9 doesn't allow specifying the plane when locking a texture.
+      // So the subsampled planes inherit the pitch of the first plane.
+      // That means the size is the size of plane 0 * plane count
+      elementSize = formatInfo->planes[0].elementSize;
+      blockSize = { formatInfo->planes[0].blockSize.width, formatInfo->planes[0].blockSize.height, 1u };
+    }
+
     const VkExtent3D blockCount = util::computeBlockCount(
-      mipExtent, formatInfo->blockSize);
+      mipExtent, blockSize);
 
-    const uint32_t planeCount = m_mapping.ConversionFormatInfo.PlaneCount;
-
-    return std::min(planeCount, 2u)
-         * align(formatInfo->elementSize * blockCount.width, 4)
+    return std::min(GetPlaneCount(), 2u)
+         * align(elementSize * blockCount.width, 4)
          * blockCount.height
          * blockCount.depth;
   }
@@ -356,7 +368,7 @@ namespace dxvk {
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
         "D3D9: Cannot create texture:",
-        "\n  Type:    ", std::hex, ResourceType,
+        "\n  Type:    0x", std::hex, ResourceType, std::dec,
         "\n  Format:  ", m_desc.Format,
         "\n  Extent:  ", m_desc.Width,
                     "x", m_desc.Height,
@@ -364,8 +376,8 @@ namespace dxvk {
         "\n  Samples: ", m_desc.MultiSample,
         "\n  Layers:  ", m_desc.ArraySize,
         "\n  Levels:  ", m_desc.MipLevels,
-        "\n  Usage:   ", std::hex, m_desc.Usage,
-        "\n  Pool:    ", std::hex, m_desc.Pool));
+        "\n  Usage:   0x", std::hex, m_desc.Usage, std::dec,
+        "\n  Pool:    0x", std::hex, m_desc.Pool, std::dec));
     }
 
     return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -673,6 +685,15 @@ namespace dxvk {
 
   DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
     return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
+  }
+
+  
+  uint32_t D3D9CommonTexture::GetPlaneCount() const {
+    const DxvkFormatInfo* formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
+      ? lookupFormatInfo(m_mapping.FormatColor)
+      : m_device->UnsupportedFormatInfo(m_desc.Format);
+
+    return vk::getPlaneCount(formatInfo->aspectMask);
   }
 
 }

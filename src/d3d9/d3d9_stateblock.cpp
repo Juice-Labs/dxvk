@@ -17,6 +17,10 @@ namespace dxvk {
     CaptureType(Type);
   }
 
+  D3D9StateBlock::~D3D9StateBlock() {
+    if (!m_parent->IsD3D8Compatible())
+      m_parent->DecrementLosableCounter();
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::QueryInterface(
           REFIID  riid,
@@ -339,15 +343,15 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.bConsts[idx] &= ~mask;
-    m_state.vsConsts.bConsts[idx] |= bits & mask;
+    m_state.vsConsts->bConsts[idx] &= ~mask;
+    m_state.vsConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.psConsts.bConsts[idx] &= ~mask;
-    m_state.psConsts.bConsts[idx] |= bits & mask;
+    m_state.psConsts->bConsts[idx] &= ~mask;
+    m_state.psConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
