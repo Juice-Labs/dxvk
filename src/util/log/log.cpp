@@ -61,6 +61,11 @@ namespace dxvk {
         if (ntdll)
           m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(ntdll, "__wine_dbg_output"));
 #endif
+
+        HMODULE juicevlk = GetModuleHandleA("juicevlk.dll");
+        if (juicevlk)
+          m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(juicevlk, "__wine_dbg_output"));
+
         auto path = getFileName(m_fileName);
 
         if (!path.empty())
