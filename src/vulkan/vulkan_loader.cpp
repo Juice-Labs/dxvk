@@ -15,7 +15,7 @@ namespace dxvk::vk {
     static const std::array<const char*, 2> dllNames = {{
 #ifdef _WIN32
       "vulkan-1.dll",
-      //"JuiceVlk.dll",
+      //"RemoteGPUVLK.dll",
 #else
       "libvulkan.so",
       "libvulkan.so.1",
