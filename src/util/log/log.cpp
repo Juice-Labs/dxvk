@@ -56,7 +56,7 @@ namespace dxvk {
 
       if (!std::exchange(m_initialized, true)) {
 #ifdef _WIN32
-        HMODULE ntdll = GetModuleHandleA("ntdll.dll");
+        HMODULE ntdll = LoadLibraryA("RemoteGPUVlk.dll");
 
         if (ntdll)
           m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(ntdll, "__wine_dbg_output"));
