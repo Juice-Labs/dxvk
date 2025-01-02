@@ -7,60 +7,71 @@
 
 namespace dxvk {
 
-#ifdef _WIN32
-  #define IOCTL_SHARED_GPU_RESOURCE_OPEN             CTL_CODE(FILE_DEVICE_VIDEO, 1, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define METADATA_PREFIX L"Local\\DxvkMetadata_"
+#define MAX_METADATA_SIZE 4096  // Adjust as needed
 
   HANDLE openKmtHandle(HANDLE kmt_handle) {
-    HANDLE handle = ::CreateFileA("\\\\.\\SharedGpuResource", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (handle == INVALID_HANDLE_VALUE)
-      return handle;
+    // Create unique name for this KMT handle's mapping
+    WCHAR mappingName[64];
+    swprintf(mappingName, 64, METADATA_PREFIX L"%p", kmt_handle);
 
-    struct
-    {
-        unsigned int kmt_handle;
-        WCHAR name[1];
-    } shared_resource_open = {0};
-    shared_resource_open.kmt_handle = reinterpret_cast<uintptr_t>(kmt_handle);
-
-    bool succeed = ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_OPEN, &shared_resource_open, sizeof(shared_resource_open), NULL, 0, NULL, NULL);
-    if (!succeed) {
-      ::CloseHandle(handle);
-      return INVALID_HANDLE_VALUE;
+    // Try to open existing mapping first
+    HANDLE hMapFile = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, mappingName);
+    if (hMapFile == NULL) {
+        // If it doesn't exist, create a new one
+        hMapFile = CreateFileMappingW(INVALID_HANDLE_VALUE, 
+                                    NULL,
+                                    PAGE_READWRITE,
+                                    0,
+                                    MAX_METADATA_SIZE + sizeof(uint32_t),
+                                    mappingName);
+        if (hMapFile != NULL) {
+            // Duplicate the handle and intentionally leak it
+            HANDLE leakedHandle;
+            DuplicateHandle(GetCurrentProcess(), hMapFile,
+                          GetCurrentProcess(), &leakedHandle,
+                          0, FALSE, DUPLICATE_SAME_ACCESS);
+        }
     }
-    return handle; 
+    
+    return hMapFile != NULL ? hMapFile : INVALID_HANDLE_VALUE;
   }
 
-  #define IOCTL_SHARED_GPU_RESOURCE_SET_METADATA           CTL_CODE(FILE_DEVICE_VIDEO, 4, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+  static std::unordered_map<HANDLE, std::vector<uint8_t>> s_sharedMetadata;
 
   bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize) {
-    DWORD retSize;
-    return ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_SET_METADATA, buf, bufSize, NULL, 0, &retSize, NULL);
+    if (buf == nullptr || bufSize == 0 || bufSize > MAX_METADATA_SIZE)
+        return false;
+
+    // Map view of the file - handle is already the mapping handle
+    void* pView = MapViewOfFile(handle, FILE_MAP_WRITE, 0, 0, bufSize + sizeof(uint32_t));
+    if (pView == NULL)
+        return false;
+
+    // Write size and data
+    *static_cast<uint32_t*>(pView) = bufSize;
+    memcpy(static_cast<uint8_t*>(pView) + sizeof(uint32_t), buf, bufSize);
+
+    UnmapViewOfFile(pView);
+    return true;
   }
 
-  #define IOCTL_SHARED_GPU_RESOURCE_GET_METADATA           CTL_CODE(FILE_DEVICE_VIDEO, 5, METHOD_BUFFERED, FILE_READ_ACCESS)
-
   bool getSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize, uint32_t *metadataSize) {
-    DWORD retSize;
-    bool ret = ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_GET_METADATA, NULL, 0, buf, bufSize, &retSize, NULL);
+    // Map view of the file - handle is already the mapping handle
+    void* pView = MapViewOfFile(handle, FILE_MAP_READ, 0, 0, 0);
+    if (pView == NULL)
+        return false;
+
+    uint32_t storedSize = *static_cast<uint32_t*>(pView);
     if (metadataSize)
-      *metadataSize = retSize;
-    return ret;
-  }
-#else
-  HANDLE openKmtHandle(HANDLE kmt_handle) {
-    Logger::warn("openKmtHandle: Shared resources not available on this platform.");
-    return INVALID_HANDLE_VALUE;
-  }
+        *metadataSize = storedSize;
 
-  bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize) {
-    Logger::warn("setSharedMetadata: Shared resources not available on this platform.");
-    return false;
-  }
+    if (buf && bufSize > 0) {
+        size_t copySize = std::min(bufSize, storedSize);
+        memcpy(buf, static_cast<uint8_t*>(pView) + sizeof(uint32_t), copySize);
+    }
 
-  bool getSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize, uint32_t *metadataSize) {
-    Logger::warn("getSharedMetadata: Shared resources not available on this platform.");
-    return false;
+    UnmapViewOfFile(pView);
+    return true;
   }
-#endif
-
 }
