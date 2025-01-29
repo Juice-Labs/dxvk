@@ -92,31 +92,49 @@ namespace dxvk {
 
   std::optional<DxvkFormatLimits> DxvkAdapter::getFormatLimits(
     const DxvkFormatQuery&          query) const {
+    Logger::warn("DXVK: Creating external image format info");
     VkPhysicalDeviceExternalImageFormatInfo externalInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
     externalInfo.handleType = query.handleType;
+    Logger::warn(str::format("DXVK: External handle type: ", query.handleType));
 
+    Logger::warn("DXVK: Creating image format info");
     VkPhysicalDeviceImageFormatInfo2 info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2 };
     info.format = query.format;
     info.type   = query.type;
     info.tiling = query.tiling;
     info.usage  = query.usage;
     info.flags  = query.flags;
+    Logger::warn(str::format("DXVK: Format info - format: ", info.format, ", type: ", info.type,
+      ", tiling: ", info.tiling, ", usage: ", info.usage, ", flags: ", info.flags));
 
-    if (externalInfo.handleType)
+    Logger::warn("DXVK: Setting up external info pNext chain");
+    if (externalInfo.handleType) {
       externalInfo.pNext = std::exchange(info.pNext, &externalInfo);
+      Logger::warn("DXVK: External info pNext chain configured");
+    }
 
+    Logger::warn("DXVK: Creating format properties structs");
     VkExternalImageFormatProperties externalProperties = { VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES };
     VkImageFormatProperties2 properties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
 
-    if (externalInfo.handleType)
+    Logger::warn("DXVK: Setting up properties pNext chain");
+    if (externalInfo.handleType) {
       externalProperties.pNext = std::exchange(properties.pNext, &externalProperties);
+      Logger::warn("DXVK: Properties pNext chain configured");
+    }
 
+    Logger::warn("DXVK: Getting physical device image format properties");
     VkResult vr = m_vki->vkGetPhysicalDeviceImageFormatProperties2(
       m_handle, &info, &properties);
+    Logger::warn(str::format("DXVK: vkGetPhysicalDeviceImageFormatProperties2 result: ", vr));
 
-    if (vr != VK_SUCCESS)
+    Logger::warn("DXVK: Checking format properties result");
+    if (vr != VK_SUCCESS) {
+      Logger::warn("DXVK: Format properties query failed, returning null");
       return std::nullopt;
+    }
 
+    Logger::warn("DXVK: Creating format limits result");
     DxvkFormatLimits result = { };
     result.maxExtent        = properties.imageFormatProperties.maxExtent;
     result.maxMipLevels     = properties.imageFormatProperties.maxMipLevels;
@@ -124,6 +142,18 @@ namespace dxvk {
     result.sampleCounts     = properties.imageFormatProperties.sampleCounts;
     result.maxResourceSize  = properties.imageFormatProperties.maxResourceSize;
     result.externalFeatures = externalProperties.externalMemoryProperties.externalMemoryFeatures;
+
+    if (result.maxExtent.width == 0 || result.maxExtent.height == 0 || result.maxExtent.depth == 0) {
+      __debugbreak();
+    }
+    
+    Logger::warn(str::format("DXVK: Format limits - maxExtent: ", result.maxExtent.width, "x",
+      result.maxExtent.height, "x", result.maxExtent.depth,
+      ", maxMipLevels: ", result.maxMipLevels,
+      ", maxArrayLayers: ", result.maxArrayLayers,
+      ", sampleCounts: ", result.sampleCounts,
+      ", maxResourceSize: ", result.maxResourceSize,
+      ", externalFeatures: ", result.externalFeatures));
     return result;
   }
 

@@ -223,7 +223,24 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if (FAILED(hr))
+    {
+      Logger::err(str::format(
+        "D3D11: Failed to create 2D texture: hr = ", hr,
+        "\n  Format:         ", desc.Format,
+        "\n  Extent:         ", desc.Width, "x", desc.Height,
+        "\n  Mip levels:     ", desc.MipLevels, 
+        "\n  Array size:     ", desc.ArraySize,
+        "\n  Sample count:   ", desc.SampleDesc.Count,
+        "\n  Sample quality: ", desc.SampleDesc.Quality,
+        "\n  Usage:          ", desc.Usage,
+        "\n  Bind flags:     ", desc.BindFlags,
+        "\n  Access flags:   ", desc.CPUAccessFlags,
+        "\n  Misc flags:     ", desc.MiscFlags,
+        "\n  Layout:         ", desc.TextureLayout));
+
       return hr;
+    }
+      
     
     if (!ppTexture2D)
       return S_FALSE;

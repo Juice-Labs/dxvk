@@ -168,7 +168,23 @@ namespace dxvk {
     // Some image formats (i.e. the R32G32B32 ones) are
     // only supported with linear tiling on most GPUs
     if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL))
+    {
+      Logger::warn("D3D11: Optimal tiling not supported, using linear tiling");
+      Logger::err(str::format(
+        "D3D11: Texture2D Desc: format = ", m_desc.Format,
+        ", width = ", m_desc.Width,
+        ", height = ", m_desc.Height,
+        ", array size = ", m_desc.ArraySize,
+        ", mip levels = ", m_desc.MipLevels,
+        ", sample count = ", m_desc.SampleDesc.Count,
+        ", sample quality = ", m_desc.SampleDesc.Quality,
+        ", usage = ", m_desc.Usage,
+        ", bind flags = ", std::hex, m_desc.BindFlags,
+        ", cpu access = ", m_desc.CPUAccessFlags,
+        ", misc flags = ", m_desc.MiscFlags));
       imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+    }
+      
     
     // Determine map mode based on our findings
     m_mapMode = DetermineMapMode(&imageInfo);
@@ -177,6 +193,7 @@ namespace dxvk {
     // to enable linear tiling, and DXVK needs to be aware that
     // the image can be accessed by the host.
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      Logger::warn("D3D11: Mapping image directly to host memory");
       imageInfo.tiling        = VK_IMAGE_TILING_LINEAR;
       imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
 
@@ -229,7 +246,8 @@ namespace dxvk {
         "\n  Layers:  ", m_desc.ArraySize,
         "\n  Levels:  ", m_desc.MipLevels,
         "\n  Usage:   ", std::hex, m_desc.BindFlags,
-        "\n  Flags:   ", std::hex, m_desc.MiscFlags));
+        "\n  Flags:   ", std::hex, m_desc.MiscFlags,
+        "\n  Tiling:  ", imageInfo.tiling));
     }
     
     // Create the image on a host-visible memory type
@@ -537,8 +555,10 @@ namespace dxvk {
     const DxvkImageCreateInfo*  pImageInfo,
           VkImageTiling         Tiling) const {
     // D3D12 images always use optimal tiling
-    if (m_11on12.Resource != nullptr && Tiling != VK_IMAGE_TILING_OPTIMAL)
+    if (m_11on12.Resource != nullptr && Tiling != VK_IMAGE_TILING_OPTIMAL) {
+      Logger::warn("D3D11: D3D12 resource requires optimal tiling");
       return FALSE;
+    }
 
     DxvkFormatQuery formatQuery = { };
     formatQuery.format = pImageInfo->format;
@@ -547,20 +567,48 @@ namespace dxvk {
     formatQuery.usage = pImageInfo->usage;
     formatQuery.flags = pImageInfo->flags;
 
-    if (pImageInfo->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
+    Logger::warn(str::format(
+      "D3D11: Format query:",
+      "\n  Format: ", formatQuery.format,
+      "\n  Type: ", formatQuery.type,
+      "\n  Tiling: ", formatQuery.tiling,
+      "\n  Usage: ", std::hex, formatQuery.usage,
+      "\n  Flags: ", std::hex, formatQuery.flags));
+
+    if (pImageInfo->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) {
       formatQuery.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      Logger::warn(str::format("D3D11: Extended usage enabled, new usage: ", std::hex, formatQuery.usage));
+    }
 
     auto properties = m_device->GetDXVKDevice()->getFormatLimits(formatQuery);
     
-    if (!properties)
+    if (!properties) {
+      Logger::warn("D3D11: No format properties found");
       return FALSE;
+    }
 
-    return (pImageInfo->extent.width  <= properties->maxExtent.width)
+    Logger::warn(str::format(
+      "D3D11: Format limits:",
+      "\n  Max extent: ", properties->maxExtent.width, "x", properties->maxExtent.height, "x", properties->maxExtent.depth,
+      "\n  Max array layers: ", properties->maxArrayLayers,
+      "\n  Max mip levels: ", properties->maxMipLevels,
+      "\n  Sample counts: ", std::hex, properties->sampleCounts));
+
+    bool result = (pImageInfo->extent.width  <= properties->maxExtent.width)
         && (pImageInfo->extent.height <= properties->maxExtent.height)
         && (pImageInfo->extent.depth  <= properties->maxExtent.depth)
         && (pImageInfo->numLayers     <= properties->maxArrayLayers)
         && (pImageInfo->mipLevels     <= properties->maxMipLevels)
         && (pImageInfo->sampleCount    & properties->sampleCounts);
+
+    Logger::warn(str::format(
+      "D3D11: Image support check result: ", result ? "TRUE" : "FALSE",
+      "\n  Image dimensions: ", pImageInfo->extent.width, "x", pImageInfo->extent.height, "x", pImageInfo->extent.depth,
+      "\n  Array layers: ", pImageInfo->numLayers,
+      "\n  Mip levels: ", pImageInfo->mipLevels,
+      "\n  Sample count: ", pImageInfo->sampleCount));
+
+    return result;
   }
 
 
