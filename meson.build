@@ -30,23 +30,24 @@ compiler_args = [
 
 link_args = []
 
+if cpu_family == 'x86' and target_machine.system() == 'windows'
+  link_args += [
+    '/SAFESEH:NO',
+  ]
+endif
+
 if get_option('build_id')
   link_args += [
     '-Wl,--build-id',
   ]
 endif
 
-dxvk_include_dirs = ['./include']
-if fs.is_dir('./include/vulkan/include')
-  dxvk_include_dirs += ['./include/vulkan/include']
-elif not cpp.check_header('vulkan/vulkan.h')
-  error('Missing Vulkan-Headers')
-endif
-if fs.is_dir('./include/spirv/include')
-  dxvk_include_dirs += ['./include/spirv/include']
-elif not cpp.check_header('spirv/unified1/spirv.hpp')
-  error('Missing SPIRV-Headers')
-endif
+dxvk_include_dirs = [
+  '../../common/vulkan/include',
+  './include',
+  './include/vulkan/include',
+  './include/spirv/include'
+]
 
 dep_displayinfo = dependency(
   'libdisplay-info',
@@ -103,10 +104,6 @@ if platform == 'windows'
     ]
   endif
 
-  lib_d3d9    = cpp.find_library('d3d9')
-  lib_d3d11   = cpp.find_library('d3d11')
-  lib_dxgi    = cpp.find_library('dxgi')
-
   if dxvk_is_msvc
     res_ext = '.res'
     wrc = find_program('rc')
@@ -116,10 +113,14 @@ if platform == 'windows'
     )
   else
     res_ext = '.o'
+    res_args = [ '-i', '@INPUT@', '-o', '@OUTPUT@' ]
+    if cpu_family == 'x86'
+      res_args += [ '-F', 'pe-i386' ]
+    endif
     wrc = find_program('windres')
     wrc_generator = generator(wrc,
       output    : [ '@BASENAME@' + res_ext ],
-      arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ],
+      arguments : res_args,
     )
   endif
 
@@ -179,7 +180,38 @@ add_project_arguments(cc.get_supported_arguments(compiler_args), language: 'c')
 add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language: 'cpp')
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
+dxvk_buildtype = get_option('buildtype')
+dxvk_debug     = dxvk_buildtype == 'debug' or dxvk_buildtype == 'debugoptimized'
+
+if dxvk_debug
+else
+  add_project_arguments('-DNDEBUG',   language : 'c')
+endif
+
+if (cpu_family == 'x86_64')
+  dxvk_library_path = meson.source_root() + '/lib'
+else
+  dxvk_library_path = meson.source_root() + '/lib32'
+endif
+
+dxvk_extradep = [ ]
+
+lib_d3d9    = cpp.find_library('d3d9')
+lib_d3d11   = cpp.find_library('d3d11')
+lib_dxgi    = cpp.find_library('dxgi')
+
+if dxvk_is_msvc or host_machine.system() == 'windows'
+  lib_d3dcompiler_43 = cpp.find_library('d3dcompiler')
+else
+  lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+endif
+lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47', required : false)
+if not lib_d3dcompiler_47.found()
+  lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
+endif
+
 exe_ext = ''
+dll_ext = ''
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslang', 'glslangValidator')
