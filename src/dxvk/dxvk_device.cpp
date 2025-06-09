@@ -214,7 +214,7 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
-    return new DxvkImage(this, createInfo, m_objects.memoryManager(), memoryType);
+    return new DxvkImage(this, createInfo, (void*)nullptr, m_objects.memoryManager(), memoryType);
   }
   
   
