@@ -147,6 +147,7 @@ namespace dxvk {
     VkExtensionProperties khrSwapchain                      = vk::makeExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     VkExtensionProperties khrSwapchainMutableFormat         = vk::makeExtension(VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME);
     VkExtensionProperties khrWin32KeyedMutex                = vk::makeExtension(VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME);
+    VkExtensionProperties khrCopyCommands2                  = vk::makeExtension(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME);
     VkExtensionProperties nvDescriptorPoolOverallocation    = vk::makeExtension(VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME);
     VkExtensionProperties nvLowLatency2                     = vk::makeExtension(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
     VkExtensionProperties nvRawAccessChains                 = vk::makeExtension(VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME);
