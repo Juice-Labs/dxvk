@@ -434,6 +434,16 @@ IDXGIVkInteropAdapter : public IUnknown {
           VkPhysicalDevice*     pPhysDev) = 0;
 };
 
+MIDL_INTERFACE("26c5dc23-e49c-4b0a-8f79-e7b1ac804d32")
+ID3D11PartnerDevice2 : public IUnknown{
+};
+
+MIDL_INTERFACE("b79cc8da-337f-400f-b09d-b2edf8a84e47")
+ID2DPrivateInfo : public IUnknown
+{
+    virtual UINT ConservativeFlushCount(void) = 0;
+};
+
 /**
  * \brief DXGI factory interface for Vulkan interop
  */

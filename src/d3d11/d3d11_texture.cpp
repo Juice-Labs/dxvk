@@ -398,6 +398,30 @@ namespace dxvk {
   }
 
 
+  VkD3D11ImageCreateInfoJUICE D3D11CommonTexture::GetJuiceInfo() const {
+    VkD3D11ImageCreateInfoJUICE d3d11ImageCreateInfo;
+    d3d11ImageCreateInfo.sType = VK_STRUCTURE_TYPE_D3D11_IMAGE_CREATE_INFO_JUICE;
+    d3d11ImageCreateInfo.pNext = nullptr;
+    d3d11ImageCreateInfo.bindFlags = VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_VERTEX_BUFFER) != 0) ? VK_D3D11_BIND_VERTEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_INDEX_BUFFER) != 0) ? VK_D3D11_BIND_INDEX_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0) ? VK_D3D11_BIND_CONSTANT_BUFFER_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) != 0) ? VK_D3D11_BIND_SHADER_RESOURCE_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_STREAM_OUTPUT) != 0) ? VK_D3D11_BIND_STREAM_OUTPUT_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) != 0) ? VK_D3D11_BIND_RENDER_TARGET_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) != 0) ? VK_D3D11_BIND_DEPTH_STENCIL_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.bindFlags |= ((m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) != 0) ? VK_D3D11_BIND_UNORDERED_ACCESS_BIT_JUICE : VK_D3D11_BIND_NONE_JUICE;
+    d3d11ImageCreateInfo.usage = (m_desc.Usage == D3D11_USAGE_DEFAULT)   ? VK_D3D11_USAGE_DEFAULT_JUICE   :
+                                 (m_desc.Usage == D3D11_USAGE_IMMUTABLE) ? VK_D3D11_USAGE_IMMUTABLE_JUICE :
+                                 (m_desc.Usage == D3D11_USAGE_DYNAMIC)   ? VK_D3D11_USAGE_DYNAMIC_JUICE   :
+                                 (m_desc.Usage == D3D11_USAGE_STAGING)   ? VK_D3D11_USAGE_STAGING_JUICE   : VK_D3D11_USAGE_DEFAULT_JUICE;
+    d3d11ImageCreateInfo.cpuAccessFlags = VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11ImageCreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) != 0) ? VK_D3D11_CPU_ACCESS_WRITE_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    d3d11ImageCreateInfo.cpuAccessFlags |= ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) != 0) ? VK_D3D11_CPU_ACCESS_READ_BIT_JUICE : VK_D3D11_CPU_ACCESS_NONE_JUICE;
+    return d3d11ImageCreateInfo;
+  }
+
+
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0 || pDesc->ArraySize == 0)
       return E_INVALIDARG;

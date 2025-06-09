@@ -767,6 +767,34 @@ namespace dxvk {
 
 
   /**
+   * \brief D2DPrivateInfo
+   */
+  class D2DPrivateInfo : public ID2DPrivateInfo {
+
+  public:
+      D2DPrivateInfo(
+          D3D11DXGIDevice* pContainer,
+          D3D11Device* pDevice);
+
+      ULONG STDMETHODCALLTYPE AddRef();
+
+      ULONG STDMETHODCALLTYPE Release();
+
+      HRESULT STDMETHODCALLTYPE QueryInterface(
+          REFIID                  riid,
+          void** ppvObject);
+
+      UINT ConservativeFlushCount(void) { return 0; }
+
+  private:
+
+      D3D11DXGIDevice* m_container;
+      D3D11Device* m_device;
+
+  };
+
+
+  /**
    * \brief Nvidia Reflex interop
    */
   class D3D11ReflexDevice : public ID3DLowLatencyDevice {
@@ -993,6 +1021,7 @@ namespace dxvk {
     D3D11on12Device     m_d3d11on12;
     DXGIDXVKDevice      m_metaDevice;
     
+    D2DPrivateInfo m_d2dPrivateInfo;
     DXGIVkSwapChainFactory   m_dxvkFactory;
 
     D3DDestructionNotifier   m_destructionNotifier;

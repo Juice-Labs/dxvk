@@ -160,6 +160,8 @@ namespace dxvk {
       return m_11on12;
     }
 
+    VkD3D11BufferCreateInfoJUICE GetJuiceInfo() const;
+
     /**
      * \brief Normalizes buffer description
      * 

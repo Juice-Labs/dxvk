@@ -1292,7 +1292,7 @@ namespace dxvk {
     *ppDeferredContext = ref(new D3D11DeferredContext(this, m_dxvkDevice, ContextFlags));
     return S_OK;
   }
-  
+
 
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeferredContext1(
           UINT                        ContextFlags, 
@@ -1334,7 +1334,9 @@ namespace dxvk {
     if (EmulatedInterface != __uuidof(ID3D10Device)
      && EmulatedInterface != __uuidof(ID3D10Device1)
      && EmulatedInterface != __uuidof(ID3D11Device)
-     && EmulatedInterface != __uuidof(ID3D11Device1))
+     && EmulatedInterface != __uuidof(ID3D11Device1)
+     && EmulatedInterface != __uuidof(ID3D11Device2)
+     && EmulatedInterface != __uuidof(ID3D11Device3))
       return E_INVALIDARG;
 
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL();
@@ -3284,6 +3286,7 @@ namespace dxvk {
     m_d3d11Reflex   (this, &m_d3d11Device),
     m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
     m_metaDevice    (this),
+    m_d2dPrivateInfo(this, &m_d3d11Device),
     m_dxvkFactory   (this, &m_d3d11Device),
     m_destructionNotifier(this) {
 
@@ -3332,6 +3335,16 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Device5)) {
       *ppvObject = ref(&m_d3d11Device);
       return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D11PartnerDevice2)) {
+        *ppvObject = ref(this);
+        return S_OK;
+    }
+
+    if (riid == __uuidof(ID2DPrivateInfo)) {
+        *ppvObject = ref(&m_d2dPrivateInfo);
+        return S_OK;
     }
     
     if (riid == __uuidof(ID3D11VkExtDevice)
@@ -3635,6 +3648,32 @@ namespace dxvk {
   
   Rc<DxvkDevice> STDMETHODCALLTYPE D3D11DXGIDevice::GetDXVKDevice() {
     return m_dxvkDevice;
+  }
+
+
+
+  D2DPrivateInfo::D2DPrivateInfo(
+      D3D11DXGIDevice* pContainer,
+      D3D11Device* pDevice)
+      : m_container(pContainer), m_device(pDevice) {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D2DPrivateInfo::AddRef() {
+      return m_device->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D2DPrivateInfo::Release() {
+      return m_device->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D2DPrivateInfo::QueryInterface(
+      REFIID                  riid,
+      void** ppvObject) {
+      return m_device->QueryInterface(riid, ppvObject);
   }
 
 }

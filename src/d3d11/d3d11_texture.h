@@ -525,6 +525,8 @@ namespace dxvk {
       return m_11on12;
     }
 
+    VkD3D11ImageCreateInfoJUICE GetJuiceInfo() const;
+
     /**
      * \brief Sets debug name for texture
      *
