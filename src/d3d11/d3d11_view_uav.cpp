@@ -448,6 +448,11 @@ namespace dxvk {
   Rc<DxvkBufferView> D3D11UnorderedAccessView::CreateCounterBufferView() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_UAV_COUNTER_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = sizeof(uint32_t);
     info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -461,7 +466,7 @@ namespace dxvk {
                 | VK_ACCESS_SHADER_READ_BIT;
     info.debugName = "UAV counter";
 
-    Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    Rc<DxvkBuffer> buffer = device->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     DxvkBufferViewKey viewInfo;
     viewInfo.format = VK_FORMAT_UNDEFINED;

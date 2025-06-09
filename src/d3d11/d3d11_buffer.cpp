@@ -105,7 +105,8 @@ namespace dxvk {
 
       // Create the buffer and set the entire buffer slice as mapped,
       // so that we only have to update it when invalidating the buffer
-      m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
+      auto d3d11BufferCreateInfo = GetJuiceInfo();
+      m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, &d3d11BufferCreateInfo, memoryFlags);
       m_cookie = m_buffer->cookie();
       m_mapPtr = m_buffer->mapPtr(0);
     } else {
@@ -396,6 +397,11 @@ namespace dxvk {
   Rc<DxvkBuffer> D3D11Buffer::CreateSoCounterBuffer() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_SO_COUNTER_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = sizeof(D3D11SOCounter);
     info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -412,7 +418,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
     info.debugName = "SO counter";
 
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return device->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
 
