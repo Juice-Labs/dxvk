@@ -358,6 +358,19 @@ namespace dxvk {
             VkMemoryPropertyFlags memoryType);
 
     /**
+     * \brief Creates a buffer object
+     * 
+     * \param [in] createInfo Buffer create info
+     * \param [in] pNext Vulkan pNext parameter for the VkBufferCreateInfo object
+     * \param [in] memoryType Memory type flags
+     * \returns The buffer object
+     */
+    Rc<DxvkBuffer> createBuffer(
+      const DxvkBufferCreateInfo& createInfo,
+      void*                       pNext,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
      * \brief Creates an image object
      * 
      * \param [in] createInfo Image create info
@@ -366,6 +379,19 @@ namespace dxvk {
      */
     Rc<DxvkImage> createImage(
       const DxvkImageCreateInfo&  createInfo,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
+     * \brief Creates an image object
+     * 
+     * \param [in] createInfo Image create info
+     * \param [in] pNext Vulkan pNext parameter for the VkImageCreateInfo object
+     * \param [in] memoryType Memory type flags
+     * \returns The image object
+     */
+    Rc<DxvkImage> createImage(
+      const DxvkImageCreateInfo&  createInfo,
+            void*                 pNext,
             VkMemoryPropertyFlags memoryType);
     
     /**

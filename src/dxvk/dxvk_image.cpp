@@ -7,6 +7,7 @@ namespace dxvk {
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
+          void*                 pNext,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
   : m_vkd           (device->vkd()),

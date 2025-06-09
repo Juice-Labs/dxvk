@@ -9,6 +9,7 @@ namespace dxvk {
   DxvkBuffer::DxvkBuffer(
           DxvkDevice*           device,
     const DxvkBufferCreateInfo& createInfo,
+          void*                 pNext,
           DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
   : m_vkd           (device->vkd()),

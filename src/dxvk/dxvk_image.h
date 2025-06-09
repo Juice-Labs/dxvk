@@ -351,6 +351,7 @@ namespace dxvk {
     DxvkImage(
             DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
+            void*                 pNext,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
     

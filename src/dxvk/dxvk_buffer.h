@@ -142,6 +142,7 @@ namespace dxvk {
     DxvkBuffer(
             DxvkDevice*           device,
       const DxvkBufferCreateInfo& createInfo,
+            void*                 pNext,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
 
