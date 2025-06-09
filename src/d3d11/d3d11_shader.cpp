@@ -62,6 +62,11 @@ namespace dxvk {
     auto icb = module.icbInfo();
 
     if (icb.size) {
+      VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+      dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+      dxvkBufferCreateInfo.pNext = nullptr;
+      dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_SHADER_CONSTANTS_BUFFER_JUICE;
+
       DxvkBufferCreateInfo info = { };
       info.size   = align(icb.size, 256u);
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
@@ -73,7 +78,7 @@ namespace dxvk {
                   | VK_ACCESS_TRANSFER_WRITE_BIT;
       info.debugName = "Icb";
 
-      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, &dxvkBufferCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);

@@ -239,10 +239,12 @@ namespace dxvk {
     if (m_11on12.Resource != nullptr)
       vkImage = VkImage(m_11on12.VulkanHandle);
 
-    if (!vkImage)
-      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
-    else
+    if (!vkImage) {
+      auto d3d11CreateInfo = GetJuiceInfo();
+      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, &d3d11CreateInfo, memoryProperties);
+    } else {
       m_image = m_device->GetDXVKDevice()->importImage(imageInfo, vkImage, memoryProperties);
+    }
 
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
       m_mapPtr = m_image->mapPtr(0);
@@ -790,6 +792,11 @@ namespace dxvk {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
 
+    VkDxvkBufferCreateInfoJUICE dxvkBufferCreateInfo;
+    dxvkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_DXVK_BUFFER_CREATE_INFO_JUICE;
+    dxvkBufferCreateInfo.pNext = nullptr;
+    dxvkBufferCreateInfo.type = VK_DXVK_TYPE_D3D11_TEXTURE_BUFFER_JUICE;
+
     DxvkBufferCreateInfo info;
     info.size   = GetSubresourceLayout(formatInfo->aspectMask, Subresource).Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -825,7 +832,7 @@ namespace dxvk {
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     auto& entry = m_buffers[Subresource];
-    entry.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
+    entry.buffer = m_device->GetDXVKDevice()->createBuffer(info, &dxvkBufferCreateInfo, memType);
     entry.slice = entry.buffer->storage();
   }
 
