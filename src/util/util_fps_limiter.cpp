@@ -31,12 +31,37 @@ namespace dxvk {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_envOverride) {
-      TimerDuration interval = frameRate != 0.0
-        ? TimerDuration(int64_t(double(TimerDuration::period::den) / frameRate))
-        : TimerDuration::zero();
+      // clang version 19.1.5
+      // Target: x86_64-pc-windows-msvc
+      // Thread model: posix
+      //
+      // Generated the following optimized code which does not protect against
+      // divide by zero:
+      //   xorpd xmm0, xmm0
+      //   ucomisd xmm6, xmm0
+      //   movsd xmm0, mmword ptr [...]
+      //   divsd xmm0, xmm6    <-- This causes a divide by zero error
+      //   cvttsd2si rcx, xmm0
+      //   cmovne rax, rcx
+      //
+      //TimerDuration interval = frameRate != 0.0
+      //  ? TimerDuration(int64_t(double(TimerDuration::period::den) / frameRate))
+      //  : TimerDuration::zero();
+      int64_t frameRateInt = int64_t(frameRate);
+      if (frameRateInt != 0) {
+        TimerDuration interval = TimerDuration(int64_t(double(TimerDuration::period::den) / frameRate));
 
-      if (m_targetInterval != interval) {
-        m_targetInterval = interval;
+        if (m_targetInterval != interval) {
+          m_targetInterval = interval;
+
+          m_heuristicFrameTime = TimePoint();
+          m_heuristicFrameCount = 0;
+          m_heuristicEnable = false;
+
+          m_maxLatency = maxLatency;
+        }
+      } else {
+        m_targetInterval = TimerDuration::zero();
 
         m_heuristicFrameTime = TimePoint();
         m_heuristicFrameCount = 0;
