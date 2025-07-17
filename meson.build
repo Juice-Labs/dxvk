@@ -43,9 +43,10 @@ if get_option('build_id')
 endif
 
 dxvk_include_dirs = [
-  '../../common/vulkan/include',
+  './include/vulkan/include',
   './include',
-  './include/spirv/include'
+  './include/spirv/include',
+  '../../common/vulkan-extensions/include'
 ]
 
 dep_displayinfo = dependency(

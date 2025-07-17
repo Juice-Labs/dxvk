@@ -5,6 +5,7 @@
 
 #define VK_USE_PLATFORM_WIN32_KHR 1
 #include <vulkan/vulkan.h>
+#include <VK_JUICE_portability.h>
 
 #define VULKAN_FN(name) \
   ::PFN_ ## name name = reinterpret_cast<::PFN_ ## name>(sym(#name))
