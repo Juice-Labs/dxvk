@@ -19,6 +19,7 @@ d3d10_core_dll = shared_library(dxvk_name_prefix+'d3d10core', d3d10_core_src, d3
   dependencies        : [ d3d10_d3d11_dep ],
   include_directories : dxvk_include_path,
   install             : true,
+  install_dir         : 'C:/juice/build/Release',
   vs_module_defs      : 'd3d10core'+def_spec_ext,
   link_args           : d3d10_core_ld_args,
   link_depends        : [ d3d10_core_link_depends ],

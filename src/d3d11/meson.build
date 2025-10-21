@@ -82,6 +82,7 @@ d3d11_dll = shared_library(dxvk_name_prefix+'d3d11', dxgi_common_src + d3d11_src
   dependencies        : [ d3d11_dxgi_dep, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
+  install_dir         : 'C:/juice/build/Release',
   vs_module_defs      : 'd3d11'+def_spec_ext,
   link_args           : d3d11_ld_args,
   link_depends        : [ d3d11_link_depends ],
