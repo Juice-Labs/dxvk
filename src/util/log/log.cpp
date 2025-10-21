@@ -46,15 +46,7 @@ namespace dxvk {
   
   
   void Logger::emitMsg(LogLevel level, const std::string& message) {
-    if (level >= m_minLevel) {
-      std::lock_guard<dxvk::mutex> lock(m_mutex);
-      
-      static std::array<const char*, 5> s_prefixes
-        = {{ "trace: ", "debug: ", "info:  ", "warn:  ", "err:   " }};
-      
-      const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
-
-      if (!std::exchange(m_initialized, true)) {
+    if (!std::exchange(m_initialized, true)) {
 #ifdef _WIN32
         HMODULE ntdll = GetModuleHandleA("ntdll.dll");
 
@@ -69,12 +61,38 @@ namespace dxvk {
 
         if (juicevlk)
           m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(juicevlk, "__wine_dbg_output"));
+
+        if (m_wineLogOutput) {
+          m_wineLogOutput("DXVK: DXVK reporting for duty. If you can see this in the client logs, this means DXVK is active and logging.\n");
+          char minLevelBuf[128];
+
+          // Print numerical and character version of minimum log level
+          static const char* levelNames[] = {
+            "Trace", "Debug", "Info", "Warn", "Error", "None"
+          };
+          unsigned int minLevelNum = static_cast<unsigned int>(m_minLevel);
+          const char* minLevelStr = (minLevelNum < (sizeof(levelNames)/sizeof(levelNames[0]))) ?
+            levelNames[minLevelNum] : "Unknown";
+
+          std::snprintf(minLevelBuf, sizeof(minLevelBuf),
+            "DXVK: Minimum log level is %u (%s)\n",
+            minLevelNum, minLevelStr);
+          m_wineLogOutput(minLevelBuf);
+        }
 #endif
         auto path = getFileName(m_fileName);
 
         if (!path.empty())
           m_fileStream = std::ofstream(str::topath(path.c_str()).c_str());
-      }
+    }
+
+    if (level >= m_minLevel) {
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      
+      static std::array<const char*, 5> s_prefixes
+        = {{ "trace: ", "debug: ", "info:  ", "warn:  ", "err:   " }};
+      
+      const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
 
       std::stringstream stream(message);
       std::string line;
