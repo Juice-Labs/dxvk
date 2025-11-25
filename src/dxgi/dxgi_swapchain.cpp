@@ -534,7 +534,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetBackgroundColor(
     const DXGI_RGBA*                pColor) {
     Logger::err("DxgiSwapChain::SetBackgroundColor: Not implemented");
-    return E_NOTIMPL;
+    return S_OK;//E_NOTIMPL;
   }
   
   
