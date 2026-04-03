@@ -46,7 +46,8 @@ dxvk_include_dirs = [
   './include/vulkan/include',
   './include',
   './include/spirv/include',
-  '../../common/vulkan-extensions/include'
+  '../../common/vulkan-extensions/include',
+  '../../common/juice_connection/include'
 ]
 
 dep_displayinfo = dependency(

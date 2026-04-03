@@ -1,50 +1,164 @@
 #include "util_shared_res.h"
+#include "util_string.h"
 #include "log/log.h"
 
 #ifdef _WIN32
-#include <winioctl.h>
+#include <mutex>
+#include <cstring>
+#include "ExternalHandleShared.h"
 #endif
 
 namespace dxvk {
 
 #ifdef _WIN32
-  #define IOCTL_SHARED_GPU_RESOURCE_OPEN             CTL_CODE(FILE_DEVICE_VIDEO, 1, METHOD_BUFFERED, FILE_WRITE_ACCESS)
-
   HANDLE openKmtHandle(HANDLE kmt_handle) {
-    HANDLE handle = ::CreateFileA("\\\\.\\SharedGpuResource", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (handle == INVALID_HANDLE_VALUE)
-      return handle;
-
-    struct
-    {
-        unsigned int kmt_handle;
-        WCHAR name[1];
-    } shared_resource_open = {0};
-    shared_resource_open.kmt_handle = reinterpret_cast<uintptr_t>(kmt_handle);
-
-    bool succeed = ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_OPEN, &shared_resource_open, sizeof(shared_resource_open), NULL, 0, NULL, NULL);
-    if (!succeed) {
-      ::CloseHandle(handle);
-      return INVALID_HANDLE_VALUE;
-    }
-    return handle; 
+    Logger::warn("openKmtHandle: Not supported under Juice");
+    return INVALID_HANDLE_VALUE;
   }
 
-  #define IOCTL_SHARED_GPU_RESOURCE_SET_METADATA           CTL_CODE(FILE_DEVICE_VIDEO, 4, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+  struct JuiceExtHandleState {
+    ExternalHandleSharedData* sharedData = nullptr;
+    HANDLE mutex = nullptr;
+  };
+
+  static JuiceExtHandleState g_juiceState;
+  static std::once_flag      g_juiceInitFlag;
+
+  typedef bool (*PFN_Juice_GetExtHandleSharedMemory)(void** ppSharedData, void** ppMutex);
+
+  static void initJuiceSharedMemory() {
+    HMODULE hIcd = ::GetModuleHandleA("RemoteGPUVlk.dll");
+    if (!hIcd) {
+      Logger::warn("util_shared_res: RemoteGPUVlk.dll not loaded in this process");
+      return;
+    }
+
+    auto pfn = reinterpret_cast<PFN_Juice_GetExtHandleSharedMemory>(
+      ::GetProcAddress(hIcd, "Juice_GetExtHandleSharedMemory"));
+    if (!pfn) {
+      Logger::warn("util_shared_res: Juice_GetExtHandleSharedMemory not found in ICD");
+      return;
+    }
+
+    void* pShared = nullptr;
+    void* pMutex  = nullptr;
+    if (!pfn(&pShared, &pMutex) || !pShared || !pMutex) {
+      Logger::warn("util_shared_res: ICD returned no shared memory (client not connected yet?)");
+      return;
+    }
+
+    auto* sd = reinterpret_cast<ExternalHandleSharedData*>(pShared);
+    if (sd->magic != kExternalHandleSharedMagic) {
+      Logger::warn("util_shared_res: shared memory magic mismatch");
+      return;
+    }
+
+    g_juiceState.sharedData = sd;
+    g_juiceState.mutex = static_cast<HANDLE>(pMutex);
+    Logger::info("util_shared_res: Juice shared memory acquired from ICD");
+  }
+
+  static JuiceExtHandleState& juiceState() {
+    std::call_once(g_juiceInitFlag, initJuiceSharedMemory);
+    return g_juiceState;
+  }
+
 
   bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize) {
-    DWORD retSize;
-    return ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_SET_METADATA, buf, bufSize, NULL, 0, &retSize, NULL);
+    auto& st = juiceState();
+    if (!st.sharedData || !st.mutex) {
+      Logger::warn("setSharedMetadata: Juice shared memory not available");
+      return false;
+    }
+
+    if (bufSize > kMaxTextureMetadataSize) {
+      Logger::warn("setSharedMetadata: metadata too large for shared entry");
+      return false;
+    }
+
+    uint64_t key = reinterpret_cast<uint64_t>(handle);
+
+    ::WaitForSingleObject(st.mutex, INFINITE);
+
+    uint32_t count = st.sharedData->count.load(std::memory_order_relaxed);
+    bool found = false;
+    for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
+      auto& e = st.sharedData->entries[i];
+      if (e.valid.load(std::memory_order_acquire) && e.localHandle == key) {
+        std::memcpy(e.textureMetadata, buf, bufSize);
+        e.textureMetadataSize = bufSize;
+        e.hasTextureMetadata.store(1, std::memory_order_release);
+        found = true;
+        break;
+      }
+    }
+
+    ::ReleaseMutex(st.mutex);
+
+    if (!found)
+      Logger::warn(str::format("setSharedMetadata: handle ", key, " not found in shared table (", count, " entries)"));
+
+    return found;
   }
 
-  #define IOCTL_SHARED_GPU_RESOURCE_GET_METADATA           CTL_CODE(FILE_DEVICE_VIDEO, 5, METHOD_BUFFERED, FILE_READ_ACCESS)
 
   bool getSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize, uint32_t *metadataSize) {
-    DWORD retSize;
-    bool ret = ::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_GET_METADATA, NULL, 0, buf, bufSize, &retSize, NULL);
-    if (metadataSize)
-      *metadataSize = retSize;
-    return ret;
+    auto& st = juiceState();
+    if (!st.sharedData || !st.mutex)
+      return false;
+
+    ::WaitForSingleObject(st.mutex, INFINITE);
+
+    uint32_t count = st.sharedData->count.load(std::memory_order_relaxed);
+    uint64_t key = reinterpret_cast<uint64_t>(handle);
+
+    // Step 1: find the entry for this local handle.
+    uint64_t serverHandle = 0;
+    const ExternalHandleEntry* direct = nullptr;
+
+    for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
+      auto& e = st.sharedData->entries[i];
+      if (e.valid.load(std::memory_order_acquire) && e.localHandle == key) {
+        serverHandle = e.handle;
+        if (e.hasTextureMetadata.load(std::memory_order_acquire))
+          direct = &e;
+        break;
+      }
+    }
+
+    // Step 2: if this entry has no metadata, find any entry with
+    //         the same server handle that does.
+    const ExternalHandleEntry* source = direct;
+    if (!source && serverHandle) {
+      for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
+        auto& e = st.sharedData->entries[i];
+        if (e.valid.load(std::memory_order_acquire) &&
+            e.handle == serverHandle &&
+            e.hasTextureMetadata.load(std::memory_order_acquire)) {
+          source = &e;
+          break;
+        }
+      }
+    }
+
+    bool ok = false;
+    if (source) {
+      uint32_t sz = source->textureMetadataSize;
+      if (sz <= bufSize) {
+        std::memcpy(buf, source->textureMetadata, sz);
+        if (metadataSize)
+          *metadataSize = sz;
+        ok = true;
+      }
+    }
+
+    ::ReleaseMutex(st.mutex);
+
+    if (!ok)
+      Logger::warn(str::format("getSharedMetadata: metadata not found for handle ", key,
+        " (serverHandle=", serverHandle, ", ", count, " entries searched)"));
+
+    return ok;
   }
 #else
   HANDLE openKmtHandle(HANDLE kmt_handle) {
