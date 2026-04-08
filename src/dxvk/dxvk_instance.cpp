@@ -77,13 +77,30 @@ namespace dxvk {
 
 
   Rc<DxvkAdapter> DxvkInstance::findAdapterByLuid(const void* luid) const {
-    for (const auto& adapter : m_adapters) {
-      const auto& vk11 = adapter->deviceProperties().vk11;
+    uint32_t luidLow = 0, luidHigh = 0;
+    std::memcpy(&luidLow, luid, 4);
+    std::memcpy(&luidHigh, reinterpret_cast<const uint8_t*>(luid) + 4, 4);
+    Logger::trace(str::format("JUICE-DXVK: findAdapterByLuid: searching for LUID={",
+      luidLow, ",", luidHigh, "} among ", m_adapters.size(), " adapters"));
 
-      if (vk11.deviceLUIDValid && !std::memcmp(luid, vk11.deviceLUID, VK_LUID_SIZE))
+    for (uint32_t i = 0; i < m_adapters.size(); i++) {
+      const auto& adapter = m_adapters[i];
+      const auto& vk11 = adapter->deviceProperties().vk11;
+      uint32_t adLow = 0, adHigh = 0;
+      std::memcpy(&adLow, vk11.deviceLUID, 4);
+      std::memcpy(&adHigh, vk11.deviceLUID + 4, 4);
+
+      Logger::trace(str::format("JUICE-DXVK: findAdapterByLuid: [", i,
+        "] deviceLUIDValid=", vk11.deviceLUIDValid,
+        " LUID={", adLow, ",", adHigh, "}"));
+
+      if (vk11.deviceLUIDValid && !std::memcmp(luid, vk11.deviceLUID, VK_LUID_SIZE)) {
+        Logger::trace(str::format("JUICE-DXVK: findAdapterByLuid: MATCH at [", i, "]"));
         return adapter;
+      }
     }
 
+    Logger::trace("JUICE-DXVK: findAdapterByLuid: NO MATCH found");
     return nullptr;
   }
 

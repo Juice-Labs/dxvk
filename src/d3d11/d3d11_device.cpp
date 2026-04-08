@@ -2255,23 +2255,28 @@ namespace dxvk {
       return S_FALSE;
 
 #ifdef _WIN32
+    Logger::trace(str::format("JUICE-DXVK: OpenSharedResourceGeneric: handle=", reinterpret_cast<uint64_t>(hResource),
+      " isKmt=", IsKmtHandle));
+
     HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
 
     if (ntHandle == INVALID_HANDLE_VALUE) {
-      Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Handle not found: ", hResource));
+      Logger::warn(str::format("JUICE-DXVK: OpenSharedResourceGeneric: Handle not found: ", reinterpret_cast<uint64_t>(hResource)));
       return E_INVALIDARG;
     }
 
     DxvkSharedTextureMetadata metadata;
     bool ret = getSharedMetadata(ntHandle, &metadata, sizeof(metadata), NULL);
 
-    if (IsKmtHandle)
-      ::CloseHandle(ntHandle);
-
     if (!ret) {
-      Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
+      Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture, handle=",
+        reinterpret_cast<uint64_t>(hResource)));
       return E_INVALIDARG;
     }
+
+    Logger::trace(str::format("JUICE-DXVK: OpenSharedResourceGeneric: metadata OK: ",
+      metadata.Width, "x", metadata.Height, " fmt=", metadata.Format,
+      " MiscFlags=0x", std::hex, metadata.MiscFlags, std::dec));
 
     D3D11_COMMON_TEXTURE_DESC d3d11Desc;
     d3d11Desc.Width          = metadata.Width;

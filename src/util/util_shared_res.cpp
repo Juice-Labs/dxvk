@@ -12,8 +12,8 @@ namespace dxvk {
 
 #ifdef _WIN32
   HANDLE openKmtHandle(HANDLE kmt_handle) {
-    Logger::warn("openKmtHandle: Not supported under Juice");
-    return INVALID_HANDLE_VALUE;
+    Logger::trace(str::format("openKmtHandle: passthrough handle ", reinterpret_cast<uint64_t>(kmt_handle)));
+    return kmt_handle;
   }
 
   struct JuiceExtHandleState {
@@ -55,7 +55,7 @@ namespace dxvk {
 
     g_juiceState.sharedData = sd;
     g_juiceState.mutex = static_cast<HANDLE>(pMutex);
-    Logger::info("util_shared_res: Juice shared memory acquired from ICD");
+    Logger::trace("util_shared_res: Juice shared memory acquired from ICD");
   }
 
   static JuiceExtHandleState& juiceState() {
@@ -84,7 +84,7 @@ namespace dxvk {
     bool found = false;
     for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
       auto& e = st.sharedData->entries[i];
-      if (e.valid.load(std::memory_order_acquire) && e.localHandle == key) {
+      if (e.refCount.load(std::memory_order_acquire) > 0 && e.localHandle == key) {
         std::memcpy(e.textureMetadata, buf, bufSize);
         e.textureMetadataSize = bufSize;
         e.hasTextureMetadata.store(1, std::memory_order_release);
@@ -95,7 +95,9 @@ namespace dxvk {
 
     ::ReleaseMutex(st.mutex);
 
-    if (!found)
+    if (found)
+      Logger::trace(str::format("setSharedMetadata: OK handle=", key, " (slot ", count, " entries)"));
+    else
       Logger::warn(str::format("setSharedMetadata: handle ", key, " not found in shared table (", count, " entries)"));
 
     return found;
@@ -112,13 +114,13 @@ namespace dxvk {
     uint32_t count = st.sharedData->count.load(std::memory_order_relaxed);
     uint64_t key = reinterpret_cast<uint64_t>(handle);
 
-    // Step 1: find the entry for this local handle.
+    // Step 1: find the entry for this local handle (exact numeric match).
     uint64_t serverHandle = 0;
     const ExternalHandleEntry* direct = nullptr;
 
     for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
       auto& e = st.sharedData->entries[i];
-      if (e.valid.load(std::memory_order_acquire) && e.localHandle == key) {
+      if (e.refCount.load(std::memory_order_acquire) > 0 && e.localHandle == key) {
         serverHandle = e.handle;
         if (e.hasTextureMetadata.load(std::memory_order_acquire))
           direct = &e;
@@ -132,7 +134,7 @@ namespace dxvk {
     if (!source && serverHandle) {
       for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
         auto& e = st.sharedData->entries[i];
-        if (e.valid.load(std::memory_order_acquire) &&
+        if (e.refCount.load(std::memory_order_acquire) > 0 &&
             e.handle == serverHandle &&
             e.hasTextureMetadata.load(std::memory_order_acquire)) {
           source = &e;
@@ -154,12 +156,16 @@ namespace dxvk {
 
     ::ReleaseMutex(st.mutex);
 
-    if (!ok)
-      Logger::warn(str::format("getSharedMetadata: metadata not found for handle ", key,
+    if (ok)
+      Logger::trace(str::format("getSharedMetadata: OK handle=", key,
+        " (serverHandle=", serverHandle, ", via ", (source == direct ? "direct" : "server-handle-fallback"), ")"));
+    else
+      Logger::warn(str::format("getSharedMetadata: FAILED handle=", key,
         " (serverHandle=", serverHandle, ", ", count, " entries searched)"));
 
     return ok;
   }
+
 #else
   HANDLE openKmtHandle(HANDLE kmt_handle) {
     Logger::warn("openKmtHandle: Shared resources not available on this platform.");
@@ -175,6 +181,7 @@ namespace dxvk {
     Logger::warn("getSharedMetadata: Shared resources not available on this platform.");
     return false;
   }
+
 #endif
 
 }

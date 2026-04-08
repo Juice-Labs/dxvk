@@ -93,8 +93,25 @@ namespace dxvk {
     handleInfo.handleType = m_info.sharing.type;
     handleInfo.memory = memoryInfo.memory;
 
-    if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
-      Logger::warn("DxvkImage::DxvkImage: Failed to get shared handle for image");
+    Logger::trace(str::format("JUICE-DXVK: DxvkImage::sharedHandle: requesting handle"
+      " handleType=0x", std::hex, handleInfo.handleType, std::dec,
+      " (", (handleInfo.handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT ? "NT" : "KMT"), ")",
+      " memory=0x", std::hex, reinterpret_cast<uint64_t>(handleInfo.memory), std::dec,
+      " img=", m_info.extent.width, "x", m_info.extent.height, " fmt=", m_info.format));
+
+    VkResult result = m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle);
+    if (result != VK_SUCCESS) {
+      Logger::warn(str::format("JUICE-DXVK: DxvkImage::sharedHandle: FAILED result=", result,
+        " handleType=0x", std::hex, handleInfo.handleType, std::dec));
+    } else {
+      Logger::trace(str::format("JUICE-DXVK: DxvkImage::sharedHandle: got handle=", reinterpret_cast<uint64_t>(handle),
+        " handleHex=0x", std::hex, reinterpret_cast<uint64_t>(handle), std::dec,
+        " type=0x", std::hex, handleInfo.handleType, std::dec,
+        " (", (handleInfo.handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT ? "NT" : "KMT"), ")",
+        " handleAligned4=", (reinterpret_cast<uint64_t>(handle) % 4 == 0),
+        " img=", m_info.extent.width, "x", m_info.extent.height, " fmt=", m_info.format,
+        " PID=", ::GetCurrentProcessId()));
+    }
 #endif
 
     return handle;

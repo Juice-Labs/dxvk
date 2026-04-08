@@ -499,10 +499,17 @@ namespace dxvk {
     desc.GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     desc.ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
 
-    if (deviceProp.vk11.deviceLUIDValid)
+    if (deviceProp.vk11.deviceLUIDValid) {
       std::memcpy(&desc.AdapterLuid, deviceProp.vk11.deviceLUID, VK_LUID_SIZE);
-    else
+      Logger::trace(str::format("JUICE-DXGI: GetAdapterDesc: adapter[", m_index,
+        "] using Vulkan deviceLUID={", desc.AdapterLuid.LowPart, ",", desc.AdapterLuid.HighPart,
+        "} deviceLUIDValid=TRUE device='", description, "'"));
+    } else {
       desc.AdapterLuid = GetAdapterLUID(m_index);
+      Logger::trace(str::format("JUICE-DXGI: GetAdapterDesc: adapter[", m_index,
+        "] using FALLBACK LUID={", desc.AdapterLuid.LowPart, ",", desc.AdapterLuid.HighPart,
+        "} deviceLUIDValid=FALSE device='", description, "'"));
+    }
 
     return desc;
   }

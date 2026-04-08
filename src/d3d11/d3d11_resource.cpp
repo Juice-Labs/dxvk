@@ -285,6 +285,8 @@ namespace dxvk {
       Logger::warn("Naming shared resources not supported");
 
     HANDLE handle = texture->GetImage()->sharedHandle();
+    Logger::trace(str::format("JUICE-DXVK: CreateSharedHandle: handle=", reinterpret_cast<uint64_t>(handle),
+      " tex=", texture->Desc()->Width, "x", texture->Desc()->Height, " fmt=", texture->Desc()->Format));
 
     if (handle == INVALID_HANDLE_VALUE)
       return E_INVALIDARG;

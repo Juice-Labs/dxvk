@@ -329,18 +329,31 @@ namespace dxvk {
     InitReturnPtr(ppvAdapter);
     uint32_t adapterId = 0;
 
+    Logger::trace(str::format("JUICE-DXGI: EnumAdapterByLuid: searching for LUID={",
+      AdapterLuid.LowPart, ",", AdapterLuid.HighPart, "}"));
+
     while (true) {
       Com<IDXGIAdapter> adapter;
       HRESULT hr = EnumAdapters(adapterId++, &adapter);
 
-      if (FAILED(hr))
+      if (FAILED(hr)) {
+        Logger::trace(str::format("JUICE-DXGI: EnumAdapterByLuid: enumerated ", adapterId - 1,
+          " adapters, NONE matched LUID={", AdapterLuid.LowPart, ",", AdapterLuid.HighPart,
+          "} hr=0x", std::hex, hr, std::dec));
         return hr;
+      }
       
       DXGI_ADAPTER_DESC desc;
       adapter->GetDesc(&desc);
 
-      if (!std::memcmp(&AdapterLuid, &desc.AdapterLuid, sizeof(LUID)))
+      Logger::trace(str::format("JUICE-DXGI: EnumAdapterByLuid: adapter[", adapterId - 1,
+        "] LUID={", desc.AdapterLuid.LowPart, ",", desc.AdapterLuid.HighPart,
+        "} vendor=0x", std::hex, desc.VendorId, " device=0x", desc.DeviceId, std::dec));
+
+      if (!std::memcmp(&AdapterLuid, &desc.AdapterLuid, sizeof(LUID))) {
+        Logger::trace(str::format("JUICE-DXGI: EnumAdapterByLuid: MATCH FOUND at adapter[", adapterId - 1, "]"));
         return adapter->QueryInterface(riid, ppvAdapter);
+      }
     }
 
     // This should be unreachable
@@ -408,7 +421,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::GetSharedResourceAdapterLuid(
           HANDLE                hResource,
           LUID*                 pLuid) {
-    Logger::err("DxgiFactory::GetSharedResourceAdapterLuid: Not implemented");
+    Logger::err(str::format("JUICE-DXGI: GetSharedResourceAdapterLuid CALLED! handle=",
+      reinterpret_cast<uint64_t>(hResource), " - NOT IMPLEMENTED, returning E_NOTIMPL"));
     return E_NOTIMPL;
   }
   

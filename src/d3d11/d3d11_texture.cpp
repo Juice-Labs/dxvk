@@ -49,9 +49,25 @@ namespace dxvk {
     if (hSharedHandle == nullptr)
       hSharedHandle = INVALID_HANDLE_VALUE;
 
+    Logger::trace(str::format("JUICE-DXVK: D3D11CommonTexture: ",
+      m_desc.Width, "x", m_desc.Height, "x", m_desc.Depth,
+      " fmt=", m_desc.Format,
+      " MiscFlags=0x", std::hex, m_desc.MiscFlags, std::dec,
+      " BindFlags=0x", std::hex, m_desc.BindFlags, std::dec,
+      " Usage=", m_desc.Usage,
+      " hShared=", reinterpret_cast<uint64_t>(hSharedHandle)));
+
     const auto sharingFlags = D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 
     if (m_desc.MiscFlags & sharingFlags) {
+      Logger::trace(str::format("JUICE-DXVK: D3D11CommonTexture SHARED texture created: ",
+        m_desc.Width, "x", m_desc.Height,
+        " fmt=", m_desc.Format,
+        " MiscFlags=0x", std::hex, m_desc.MiscFlags, std::dec,
+        " BindFlags=0x", std::hex, m_desc.BindFlags, std::dec,
+        " hSharedHandle=", reinterpret_cast<uint64_t>(hSharedHandle),
+        " mode=", (hSharedHandle == INVALID_HANDLE_VALUE ? "Export" : "Import")));
+
       if (pDevice->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0 ||
           (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)) == (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) ||
           (m_desc.MiscFlags & sharingFlags) == D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
@@ -65,6 +81,14 @@ namespace dxvk {
         ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
         : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
       imageInfo.sharing.handle = hSharedHandle;
+
+      Logger::trace(str::format("JUICE-DXVK: D3D11CommonTexture sharing config:"
+        " mode=", (imageInfo.sharing.mode == DxvkSharedHandleMode::Export ? "Export" : "Import"),
+        " handleType=", (imageInfo.sharing.type == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT ? "OPAQUE_WIN32(NT)" : "OPAQUE_WIN32_KMT"),
+        " handle=", reinterpret_cast<uint64_t>(hSharedHandle),
+        " SHARED_NTHANDLE=", !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE),
+        " SHARED=", !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED),
+        " tex=", m_desc.Width, "x", m_desc.Height));
     }
 
     if (!pDevice->GetOptions()->disableMsaa)
@@ -747,12 +771,20 @@ namespace dxvk {
   
   
   void D3D11CommonTexture::ExportImageInfo() {
-    HANDLE hSharedHandle;
+    bool isNtHandle = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE);
+    HANDLE rawHandle = m_image->sharedHandle();
+    Logger::trace(str::format("JUICE-DXVK: ExportImageInfo: rawHandle=", reinterpret_cast<uint64_t>(rawHandle),
+      " isNtHandle=", isNtHandle,
+      " tex=", m_desc.Width, "x", m_desc.Height, " fmt=", m_desc.Format));
 
-    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
-      hSharedHandle = m_image->sharedHandle();
+    HANDLE hSharedHandle;
+    if (isNtHandle)
+      hSharedHandle = rawHandle;
     else
-      hSharedHandle = openKmtHandle( m_image->sharedHandle() );
+      hSharedHandle = openKmtHandle(rawHandle);
+
+    Logger::trace(str::format("JUICE-DXVK: ExportImageInfo: finalHandle=", reinterpret_cast<uint64_t>(hSharedHandle),
+      " isNtHandle=", isNtHandle));
 
     DxvkSharedTextureMetadata metadata;
 
@@ -769,11 +801,20 @@ namespace dxvk {
     metadata.TextureLayout  = m_desc.TextureLayout;
 
     if (hSharedHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(hSharedHandle, &metadata, sizeof(metadata))) {
-      Logger::warn("D3D11: Failed to write shared resource info for a texture");
+      Logger::warn(str::format("JUICE-DXVK: ExportImageInfo FAILED: handle=", reinterpret_cast<uint64_t>(hSharedHandle)));
+    } else {
+      Logger::trace(str::format("JUICE-DXVK: ExportImageInfo SUCCESS: handle=", reinterpret_cast<uint64_t>(hSharedHandle),
+        " isNtHandle=", isNtHandle,
+        " tex=", m_desc.Width, "x", m_desc.Height,
+        " totalBytes=", (uint64_t)m_desc.Width * m_desc.Height * 16,
+        " PID=", ::GetCurrentProcessId()));
     }
 
-    if (hSharedHandle != INVALID_HANDLE_VALUE)
+    if (hSharedHandle != INVALID_HANDLE_VALUE && !isNtHandle) {
+      Logger::trace(str::format("JUICE-DXVK: ExportImageInfo: closing KMT handle=",
+        reinterpret_cast<uint64_t>(hSharedHandle)));
       CloseHandle(hSharedHandle);
+    }
   }
   
   
