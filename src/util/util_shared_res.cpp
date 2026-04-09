@@ -16,15 +16,17 @@ namespace dxvk {
     return kmt_handle;
   }
 
+  typedef bool (*PFN_Juice_GetExtHandleSharedMemory)(void** ppSharedData, void** ppMutex);
+  typedef bool (*PFN_Juice_ResolveHandle)(void* handle, void* outResult);
+
   struct JuiceExtHandleState {
     ExternalHandleSharedData* sharedData = nullptr;
     HANDLE mutex = nullptr;
+    PFN_Juice_ResolveHandle pfnResolve = nullptr;
   };
 
   static JuiceExtHandleState g_juiceState;
   static std::once_flag      g_juiceInitFlag;
-
-  typedef bool (*PFN_Juice_GetExtHandleSharedMemory)(void** ppSharedData, void** ppMutex);
 
   static void initJuiceSharedMemory() {
     HMODULE hIcd = ::GetModuleHandleA("RemoteGPUVlk.dll");
@@ -55,6 +57,10 @@ namespace dxvk {
 
     g_juiceState.sharedData = sd;
     g_juiceState.mutex = static_cast<HANDLE>(pMutex);
+
+    g_juiceState.pfnResolve = reinterpret_cast<PFN_Juice_ResolveHandle>(
+      ::GetProcAddress(hIcd, "Juice_ResolveHandle"));
+
     Logger::trace("util_shared_res: Juice shared memory acquired from ICD");
   }
 
@@ -106,6 +112,23 @@ namespace dxvk {
 
   bool getSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize, uint32_t *metadataSize) {
     auto& st = juiceState();
+
+    if (st.pfnResolve) {
+      ExternalHandleResolveResult result{};
+      if (st.pfnResolve(handle, &result) && result.hasTextureMetadata &&
+          result.textureMetadataSize > 0 && result.textureMetadataSize <= bufSize) {
+        std::memcpy(buf, result.textureMetadata, result.textureMetadataSize);
+        if (metadataSize)
+          *metadataSize = result.textureMetadataSize;
+        Logger::trace(str::format("getSharedMetadata: OK via ResolveHandle handle=",
+          reinterpret_cast<uint64_t>(handle)));
+        return true;
+      }
+      Logger::warn(str::format("getSharedMetadata: ResolveHandle returned no metadata for handle=",
+        reinterpret_cast<uint64_t>(handle)));
+      return false;
+    }
+
     if (!st.sharedData || !st.mutex)
       return false;
 
@@ -114,7 +137,6 @@ namespace dxvk {
     uint32_t count = st.sharedData->count.load(std::memory_order_relaxed);
     uint64_t key = reinterpret_cast<uint64_t>(handle);
 
-    // Step 1: find the entry for this local handle (exact numeric match).
     uint64_t serverHandle = 0;
     const ExternalHandleEntry* direct = nullptr;
 
@@ -128,8 +150,6 @@ namespace dxvk {
       }
     }
 
-    // Step 2: if this entry has no metadata, find any entry with
-    //         the same server handle that does.
     const ExternalHandleEntry* source = direct;
     if (!source && serverHandle) {
       for (uint32_t i = 0; i < count && i < kMaxExternalHandles; ++i) {
