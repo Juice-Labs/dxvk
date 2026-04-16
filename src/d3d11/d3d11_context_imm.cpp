@@ -998,7 +998,10 @@ namespace dxvk {
     // We do not flush empty chunks, so if we are tracking a resource
     // immediately after a flush, we need to use the sequence number
     // of the previously submitted chunk to prevent deadlocks.
-    return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
+    // Guard against m_csChunk being null — overlay DLLs (e.g. EOS)
+    // can call back into the immediate context from the submission
+    // thread while the app thread has moved the chunk away.
+    return !m_csChunk || m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
   }
 
 
